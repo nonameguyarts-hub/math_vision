@@ -39,10 +39,10 @@ x ^ 2 + 1 = 0                   No real solution (or x = -I, I)x = no real solut
 | x | = 3                       x = -3, 3               ERR: unsupported token |  No (unsupported tok...)The symbol | isn't supported yet. Check it against your photo.
 
 --- Group D: Inequalities ---
-x + 3 < 5                       x < 2                   ERR: unsupported token <  No (unsupported tok...)The symbol < isn't supported yet. Check it against your photo.
-2 x - 1 \geq 7                  x >= 4                  ERR: unsupported token \geqNo (unsupported tok...)The symbol \geq isn't supported yet. Check it against your photo.
-- x > 4                         x < -4                  ERR: unsupported token >  No (unsupported tok...)The symbol > isn't supported yet. Check it against your photo.
-3 x \leq 2 x + 5                x <= 5                  ERR: unsupported token \leqNo (unsupported tok...)The symbol \leq isn't supported yet. Check it against your photo.
+x + 3 < 5                       x < 2                   x < 2                     2       OK                                      
+2 x - 1 \geq 7                  x >= 4                  x >= 4                    3       OK                                      
+- x > 4                         x < -4                  x < -4                    2       OK                                      
+3 x \leq 2 x + 5                x <= 5                  x <= 5                    2       OK                                      
 
 --- Group E: Odd or Invalid ---
 500 - 50 = 160                  False (arithmetic check)False                     3       The statement is false. The equation or numbers may have been misread from your photo.
@@ -110,35 +110,31 @@ DETAILED ANALYSIS OF FAILURES, LIMITATIONS, AND SURPRISING BEHAVIORS:
 
 [Group D: Inequalities] 'x + 3 < 5':
    Expected Math Answer : x < 2
-   Program Answer/Status: Error: unsupported token <
-   Steps Generated      : 0 steps (note: unsupported token <)
-   UI Review Message    : The symbol < isn't supported yet. Check it against your photo. (Warnings: [])
-   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token <', UI='The symbol < isn't supported yet. Check it against your photo.'
-   Diagnosis/Details    : Solver rejected inequality: error='unsupported token <'
+   Program Answer/Status: x < 2
+   Steps Generated      : 2 steps (note: None)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver rejected inequality: error='None'
 
 [Group D: Inequalities] '2 x - 1 \\geq 7':
    Expected Math Answer : x >= 4
-   Program Answer/Status: Error: unsupported token \geq
-   Steps Generated      : 0 steps (note: unsupported token \geq)
-   UI Review Message    : The symbol \geq isn't supported yet. Check it against your photo. (Warnings: [])
-   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token \geq', UI='The symbol \geq isn't supported yet. Check it against your photo.'
-   Diagnosis/Details    : Solver rejected inequality: error='unsupported token \geq'
+   Program Answer/Status: x >= 4
+   Steps Generated      : 3 steps (note: None)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver rejected inequality: error='None'
 
 [Group D: Inequalities] '- x > 4':
    Expected Math Answer : x < -4
-   Program Answer/Status: Error: unsupported token >
-   Steps Generated      : 0 steps (note: unsupported token >)
-   UI Review Message    : The symbol > isn't supported yet. Check it against your photo. (Warnings: [])
-   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token >', UI='The symbol > isn't supported yet. Check it against your photo.'
-   Diagnosis/Details    : Solver rejected inequality: error='unsupported token >'
+   Program Answer/Status: x < -4
+   Steps Generated      : 2 steps (note: None)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver rejected inequality: error='None'
 
 [Group D: Inequalities] '3 x \\leq 2 x + 5':
    Expected Math Answer : x <= 5
-   Program Answer/Status: Error: unsupported token \leq
-   Steps Generated      : 0 steps (note: unsupported token \leq)
-   UI Review Message    : The symbol \leq isn't supported yet. Check it against your photo. (Warnings: [])
-   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token \leq', UI='The symbol \leq isn't supported yet. Check it against your photo.'
-   Diagnosis/Details    : Solver rejected inequality: error='unsupported token \leq'
+   Program Answer/Status: x <= 5
+   Steps Generated      : 2 steps (note: None)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver rejected inequality: error='None'
 
 [Group E: Odd or Invalid] '500 - 50 = 160':
    Expected Math Answer : False (arithmetic check)

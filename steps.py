@@ -23,7 +23,7 @@ from typing import Any, Optional
 
 import sympy as sp
 
-from solver import SINGLE, normalize_latex, read_group, solve_latex, split_eq
+from solver import SINGLE, normalize_latex, read_group, solve_latex, split_eq, split_relation
 
 MAX_STEPS = 40
 
@@ -651,6 +651,52 @@ def _linear(left, right, name):
     return rows, name, sol
 
 
+def _linear_ineq(left, right, op: str, name: str):
+    x = sp.Symbol(name)
+    a1, b1 = _lin(_sym(left, x), x)
+    a2, b2 = _lin(_sym(right, x), x)
+    A, C = a1 - a2, b2 - b1
+    if A == 0:
+        raise Unsupported("no unique solution")
+    sol = C / A
+
+    op_latex_map = {"<": "<", ">": ">", "<=": "\\leq", ">=": "\\geq"}
+    op_str_map = {"<": "<", ">": ">", "<=": "<=", ">=": ">="}
+    flip_map = {"<": ">", ">": "<", "<=": ">=", ">=": "<="}
+
+    cur_latex = op_latex_map[op]
+    rows = [{"latex": f"{R(left)} {cur_latex} {R(right)}", "why": "Start"}]
+
+    def add(latex, why):
+        if latex.replace(" ", "") != rows[-1]["latex"].replace(" ", ""):
+            rows.append({"latex": latex, "why": why})
+
+    add(f"{lin_latex(a1, b1, name)} {cur_latex} {lin_latex(a2, b2, name)}", "Simplify both sides")
+    if a2 != 0:
+        verb = "Subtract" if a2 > 0 else "Add"
+        amt = ("" if abs(a2) == 1 else plain(abs(a2))) + name
+        add(f"{lin_latex(A, b1, name)} {cur_latex} {lin_latex(0, b2, name)}", f"{verb} {amt} on both sides")
+    if b1 != 0:
+        verb = "Subtract" if b1 > 0 else "Add"
+        add(f"{lin_latex(A, 0, name)} {cur_latex} {lin_latex(0, C, name)}", f"{verb} {plain(abs(b1))} on both sides")
+
+    if A == 1:
+        final_op = op
+    elif A > 0:
+        final_op = op
+        final_latex = op_latex_map[final_op]
+        add(f"{name} {final_latex} {R(mk(sol))}", f"Divide both sides by {plain(A)}")
+    else:  # A < 0, multiplying/dividing by negative flips the inequality
+        final_op = flip_map[op]
+        final_latex = op_latex_map[final_op]
+        add(f"{name} {final_latex} {R(mk(sol))}", f"Divide both sides by {plain(A)} and flip the inequality sign")
+
+    final_latex = op_latex_map[final_op]
+    answer_latex = f"{name} {final_latex} {R(mk(sol))}"
+    expected_result = f"{name} {op_str_map[final_op]} {plain(sol)}"
+    return rows, name, answer_latex, expected_result
+
+
 # --------------------------------------------------------------------------- public API
 FAIL_NOTE = "Step-by-step working isn't available for this expression."
 
@@ -663,9 +709,10 @@ def steps_for(latex: str) -> dict:
             out["note"] = ref["error"]
             return out
         toks = normalize_latex(latex).split()
-        parts = split_eq(toks)
+        parts, ops = split_relation(toks)
         if len(parts) > 1 and parts[-1] == []:
             parts = parts[:-1]
+            ops = ops[:-1]
 
         def build(allow):
             return [Parser(p, allow).parse() for p in parts]
@@ -682,6 +729,18 @@ def steps_for(latex: str) -> dict:
             if ref["kind"] != "value" or sp.Rational(ref["result"]) != sp.Rational(v.numerator, v.denominator):
                 raise Unsupported("mismatch with solver")
             answer = R(mk(v))
+        elif len(ops) == 1 and ops[0] in ("<", ">", "<=", ">="):
+            op = ops[0]
+            if not vars_mode:
+                raise Unsupported("numeric inequality")
+            names = set()
+            for s in sides:
+                _vars(s, names)
+            if len(sides) != 2 or len(names) != 1:
+                raise Unsupported("only one inequality in one unknown")
+            rows, name, answer, exp_res = _linear_ineq(sides[0], sides[1], op, next(iter(names)))
+            if ref["kind"] != "solve" or ref["result"].replace(" ", "") != exp_res.replace(" ", ""):
+                raise Unsupported("mismatch with solver")
         elif not vars_mode:
             rows, equal = _check(sides)
             if ref["kind"] != "check" or ref["result"] != str(equal):

@@ -33,6 +33,12 @@ def review(latex: str, mode: str = "Arithmetic") -> dict:
     """
     r = solve_latex(latex)
     out = {"ok": r["ok"], "error": friendly(r["error"]) if r["error"] else None, "warnings": [], "needs_confirm": False, "result": r}
+    has_eq = "=" in latex
+    has_ineq = any(s in latex for s in ("<", ">", "\\leq", "\\geq", "\\le", "\\ge"))
+    if has_eq and has_ineq:
+        out["warnings"].append(
+            "The statement contains both an equals sign and an inequality sign. Check against your photo.")
+        out["needs_confirm"] = True
     if not r["ok"]:
         return out
     if mode == "Arithmetic" and r["kind"] in ("simplify", "solve", "identity"):
