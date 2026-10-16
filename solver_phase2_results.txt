@@ -1,0 +1,21 @@
+| Expression                | Result Text            | Kind       | Steps | UI Warnings                    |
+|:--------------------------|:-----------------------|:-----------|:------|:-------------------------------|
+| x + 3 < 5                 | x < 2                  | solve      | 2     | []                             |
+| 2 x - 1 \geq 7            | x >= 4                 | solve      | 3     | []                             |
+| - x > 4                   | x < -4                 | solve      | 2     | []                             |
+| 3 x \leq 2 x + 5          | x <= 5                 | solve      | 2     | []                             |
+| x ^ 2 < 9                 | -3 < x < 3             | solve      | 0     | []                             |
+| x ^ 2 > 9                 | x < -3 or x > 3        | solve      | 0     | []                             |
+| x ^ 2 - 4 \geq 0          | x <= -2 or x >= 2      | solve      | 0     | []                             |
+| 2 x + 1 > 2 x             | true for all real x    | identity   | 0     | []                             |
+| x < x - 1                 | no solution            | solve      | 0     | []                             |
+| 3 x + 2 \leq 2 x + 7      | x <= 5                 | solve      | 3     | []                             |
+| \frac { x } { - 2 } > 3   | x < -6                 | solve      | 3     | []                             |
+| 2 ( x - 1 ) < x + 4       | x < 6                  | solve      | 4     | []                             |
+| x ^ 2 \leq 0              | x = 0                  | solve      | 0     | []                             |
+| ( x - 1 ) ^ 2 \leq 0      | x = 1                  | solve      | 0     | []                             |
+| x ^ 2 < 0                 | no solution            | solve      | 0     | []                             |
+| - 3 < x < 3               | -3 < x < 3             | solve      | 0     | []                             |
+| 1 < 2 < 3                 | True                   | check      | 0     | []                             |
+| 2 < 3                     | True                   | check      | 0     | []                             |
+| 5 \leq 4                  | False                  | check      | 0     | ['The statement is false. The equation or numbers may have been misread from your photo.'] |

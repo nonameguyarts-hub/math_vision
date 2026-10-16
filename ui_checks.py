@@ -1,6 +1,6 @@
 """Pure-Python checks the UI runs before solving (no Streamlit needed, so they are testable)."""
 import re
-from solver import solve_latex
+from solver import normalize_latex, solve_latex, split_relation
 
 MODES = ("Arithmetic", "Equation")
 
@@ -33,8 +33,10 @@ def review(latex: str, mode: str = "Arithmetic") -> dict:
     """
     r = solve_latex(latex)
     out = {"ok": r["ok"], "error": friendly(r["error"]) if r["error"] else None, "warnings": [], "needs_confirm": False, "result": r}
-    has_eq = "=" in latex
-    has_ineq = any(s in latex for s in ("<", ">", "\\leq", "\\geq", "\\le", "\\ge"))
+    toks = normalize_latex(latex).split()
+    parts, ops = split_relation(toks)
+    has_eq = any(op == "=" for op in ops)
+    has_ineq = any(op in ("<", ">", "<=", ">=") for op in ops)
     if has_eq and has_ineq:
         out["warnings"].append(
             "The statement contains both an equals sign and an inequality sign. Check against your photo.")

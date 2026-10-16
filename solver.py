@@ -139,8 +139,8 @@ def split_relation(toks):
     for t in toks:
         if t in ("{", "[", "("): depth += 1
         elif t in ("}", "]", ")"): depth -= 1
-        if t in ("=", "<", ">", "\\leq", "\\geq") and depth == 0:
-            canonical_op = {"\\leq": "<=", "\\geq": ">=", "=": "=", "<": "<", ">": ">"}[t]
+        if t in ("=", "<", ">", "\\leq", "\\geq", "\\neq") and depth == 0:
+            canonical_op = {"\\leq": "<=", "\\geq": ">=", "=": "=", "<": "<", ">": ">", "\\neq": "!="}[t]
             ops.append(canonical_op)
             parts.append([])
         else:
@@ -172,19 +172,27 @@ def normalize_latex(s):
     s = str(s)
     for k, v in _UNICODE.items():
         s = s.replace(k, v)
+    s = s.replace("<=", " \\leq ").replace(">=", " \\geq ")
+    s = s.replace("!=", " \\neq ")
     s = re.sub(r"\\(dfrac|tfrac)\b", r"\\frac", s)
+    s = re.sub(r"\\(left|right)\b", "", s)
     s = re.sub(r"\\le\b", r"\\leq", s)
     s = re.sub(r"\\ge\b", r"\\geq", s)
+    s = re.sub(r"\\ne\b", r"\\neq", s)
     return " ".join(_TOKEN.findall(s))
 
 def has_letters(latex):
     return any(t in SINGLE for t in str(latex).split())
 
 def parse_and(and_expr, var):
+    if isinstance(and_expr, sp.Equality):
+        return f"{var} = {and_expr.rhs if and_expr.lhs == var else and_expr.lhs}"
     args = and_expr.args if isinstance(and_expr, sp.And) else [and_expr]
     low_val, low_strict = None, None
     high_val, high_strict = None, None
     for a in args:
+        if isinstance(a, sp.Equality):
+            return f"{var} = {a.rhs if a.lhs == var else a.lhs}"
         if isinstance(a, (sp.StrictLessThan, sp.LessThan, sp.StrictGreaterThan, sp.GreaterThan)):
             lhs, rhs = a.lhs, a.rhs
             if lhs == var:
@@ -219,6 +227,8 @@ def format_inequality_solution(expr, var):
         return f"true for all real {var}"
     if expr is sp.S.false:
         return "no solution"
+    if isinstance(expr, sp.Equality):
+        return f"{var} = {expr.rhs if expr.lhs == var else expr.lhs}"
     if isinstance(expr, sp.Or):
         parts = [parse_and(arg, var) for arg in expr.args]
         return " or ".join(sorted(parts, key=lambda p: ("<" not in p, p)))
@@ -231,7 +241,9 @@ def solve_latex(s):
         if not toks: raise ParseError("empty")
         check_braces(toks)
         parts, ops = split_relation(toks)
-        if len(ops) > 1 and any(op == "=" for op in ops) and any(op != "=" for op in ops):
+        if "!=" in ops:
+            raise ParseError("unsupported token \\neq")
+        if any(op == "=" for op in ops) and any(op in ("<", ">", "<=", ">=") for op in ops):
             raise ParseError("expression contains both '=' and inequality sign")
         if len(parts) > 1 and parts[-1] == []:
             if any(any(t in SINGLE for t in p) for p in parts[:-1]):
@@ -250,19 +262,24 @@ def solve_latex(s):
                 v = sp.simplify(e)
                 res.update(kind="value", result=str(v))
                 if not v.is_Integer: res["approx"] = round(float(v), 6)
-        elif len(ops) == 1 and ops[0] in ("<", ">", "<=", ">="):
-            op = ops[0]
-            if not exprs[0].free_symbols and not exprs[1].free_symbols:
-                diff = sp.simplify(exprs[0] - exprs[1])
-                cmp_ok = {"<": diff < 0, "<=": diff <= 0, ">": diff > 0, ">=": diff >= 0}[op]
-                res.update(kind="check", result=str(bool(cmp_ok)))
+        elif len(ops) >= 1 and all(op in ("<", ">", "<=", ">=") for op in ops):
+            op_map = {"<": sp.StrictLessThan, "<=": sp.LessThan, ">": sp.StrictGreaterThan, ">=": sp.GreaterThan}
+            if all(not e.free_symbols for e in exprs):
+                all_ok = True
+                for k in range(len(exprs) - 1):
+                    op = ops[k]
+                    diff = sp.simplify(exprs[k] - exprs[k + 1])
+                    cmp_ok = {"<": diff < 0, "<=": diff <= 0, ">": diff > 0, ">=": diff >= 0}[op]
+                    if not cmp_ok:
+                        all_ok = False
+                        break
+                res.update(kind="check", result=str(bool(all_ok)))
             else:
-                syms = sorted(exprs[0].free_symbols | exprs[1].free_symbols, key=str)
+                syms = sorted(set().union(*(e.free_symbols for e in exprs)), key=str)
                 if len(syms) != 1: raise ParseError("only single-variable inequalities supported")
                 var = syms[0]
-                op_map = {"<": sp.StrictLessThan, "<=": sp.LessThan, ">": sp.StrictGreaterThan, ">=": sp.GreaterThan}
-                rel = op_map[op](exprs[0], exprs[1])
-                sol = sp.reduce_inequalities(rel, var)
+                rels = [op_map[ops[k]](exprs[k], exprs[k + 1]) for k in range(len(exprs) - 1)]
+                sol = sp.reduce_inequalities(rels, var)
                 formatted = format_inequality_solution(sol, var)
                 if sol is sp.S.true:
                     res.update(kind="identity", result=formatted)

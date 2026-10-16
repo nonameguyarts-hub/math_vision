@@ -220,6 +220,70 @@ def test_phase2_inequalities():
     print("PASS: Phase 2 (inequalities)")
 
 
+def test_phase2_fixes_followup():
+    # 1. ASCII <= and >= mapping
+    r_le = solve_latex("x <= 5")
+    assert r_le["ok"] is True and r_le["result"] == "x <= 5"
+    st_le = steps_for("x <= 5")
+    assert st_le["ok"] is True
+
+    r_ge = solve_latex("x >= 5")
+    assert r_ge["ok"] is True and r_ge["result"] == "x >= 5"
+    st_ge = steps_for("x >= 5")
+    assert st_ge["ok"] is True
+
+    # 2. !=, \neq, \ne mapped to friendly not supported yet message
+    for ineq_str in ("x != 5", r"x \neq 5", r"x \ne 5"):
+        r = solve_latex(ineq_str)
+        assert r["ok"] is False
+        rev = review(ineq_str, "Equation")
+        assert rev["error"] is not None
+        assert "supported yet" in rev["error"].lower(), f"Expected not supported yet message for '{ineq_str}': {rev['error']}"
+
+    # 3. Regression test: \left( and \right) with = must NOT warn about both = and ineq sign
+    rev_left1 = review(r"\left( x \right) = 5", "Equation")
+    assert rev_left1["ok"] is True
+    assert not any("both" in w.lower() for w in rev_left1["warnings"]), f"False positive mixed warning: {rev_left1['warnings']}"
+
+    rev_left2 = review(r"\left ( 2 x + 1 \right ) = 7", "Equation")
+    assert rev_left2["ok"] is True
+    assert not any("both" in w.lower() for w in rev_left2["warnings"]), f"False positive mixed warning: {rev_left2['warnings']}"
+
+    # 4. Single-point solutions
+    r_pt1 = solve_latex(r"x ^ 2 \leq 0")
+    assert r_pt1["ok"] is True
+    assert r_pt1["result"] == "x = 0", f"Expected 'x = 0', got {r_pt1['result']}"
+
+    r_pt2 = solve_latex(r"( x - 1 ) ^ 2 \leq 0")
+    assert r_pt2["ok"] is True
+    assert r_pt2["result"] == "x = 1", f"Expected 'x = 1', got {r_pt2['result']}"
+
+    r_empty = solve_latex("x ^ 2 < 0")
+    assert r_empty["ok"] is True
+    assert r_empty["result"] == "no solution"
+
+    # 5. Chained inequalities
+    r_chained = solve_latex("- 3 < x < 3")
+    assert r_chained["ok"] is True
+    assert r_chained["result"] == "-3 < x < 3", f"Expected '-3 < x < 3', got {r_chained['result']}"
+
+    r_num_chain = solve_latex("1 < 2 < 3")
+    assert r_num_chain["ok"] is True
+    assert r_num_chain["result"] == "True"
+
+    r_num1 = solve_latex("2 < 3")
+    assert r_num1["ok"] is True
+    assert r_num1["result"] == "True"
+
+    r_num2 = solve_latex(r"5 \leq 4")
+    assert r_num2["ok"] is True
+    assert r_num2["result"] == "False"
+    rev_num2 = review(r"5 \leq 4", "Arithmetic")
+    assert any("false" in w.lower() for w in rev_num2["warnings"])
+
+    print("PASS: Phase 2 fixes follow-up checks")
+
+
 if __name__ == "__main__":
     test_phase1_identity()
     test_phase1_frac_aliases()
@@ -229,4 +293,5 @@ if __name__ == "__main__":
     test_phase1_nth_root()
     test_followup_negative_base_roots()
     test_phase2_inequalities()
+    test_phase2_fixes_followup()
     print("\nALL PHASE 1 & PHASE 2 TESTS PASSED!")
