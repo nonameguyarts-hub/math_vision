@@ -1,0 +1,225 @@
+==================================================================================================================================
+MATHVISION SOLVER STRESS TEST RESULTS
+==================================================================================================================================
+LaTeX Input                     Expected Math           Solver Ans/Err            Steps   UI Msg / Warnings                       
+----------------------------------------------------------------------------------------------------------------------------------
+
+--- Group A: Arithmetic ---
+45 + 17                         62                      62                        2       OK                                      
+120 / 4                         30                      30                        2       OK                                      
+3 \times ( 8 - 2 )              18                      18                        3       OK                                      
+2 ^ { 5 }                       32                      32                        2       OK                                      
+\frac { 3 } { 4 } + \frac { 1 } { 2 }5/4                     5/4                       3       OK                                      
+7 - 12                          -5                      -5                        2       OK                                      
+0.6 + 0.25                      0.85 (or 17/20)         17/20                     3       OK                                      
+100 \div 8                      25/2 (or 12.5)          25/2                      2       OK                                      
+\sqrt { 49 } + 3                10                      10                        3       OK                                      
+- 5 + 8                         3                       3                         2       OK                                      
+2 ( 3 + 4 )                     14                      14                        3       OK                                      
+
+--- Group B: One Unknown ---
+2 x + 6 = 90                    x = 42                  x = 42                    4       OK                                      
+5 x + 50 = 160                  x = 22                  x = 22                    4       OK                                      
+3 x - 7 = 11                    x = 6                   x = 6                     4       OK                                      
+x + x = 10                      x = 5                   x = 5                     4       OK                                      
+2 ( x + 3 ) = 14                x = 4                   x = 4                     5       OK                                      
+\frac { x } { 4 } = 5           x = 20                  x = 20                    4       OK                                      
+7 = 2 x + 1                     x = 3                   x = 3                     5       OK                                      
+0.5 x = 3                       x = 6                   x = 6                     4       OK                                      
+x - 12 = - 4                    x = 8                   x = 8                     3       OK                                      
+4 x = 2 x + 10                  x = 5                   x = 5                     4       OK                                      
+5 m + 50 = 160                  m = 22                  m = 22                    4       OK                                      
+3 y - 9 = 0                     y = 3                   y = 3                     4       OK                                      
+
+--- Group C: Nonlinear ---
+x ^ 2 = 9                       x = -3, 3               x = -3, 3                 No (Step-by-step wo...)OK                                      
+x ^ 2 - 5 x + 6 = 0             x = 2, 3                x = 2, 3                  No (Step-by-step wo...)OK                                      
+x ^ 2 + 1 = 0                   No real solution (or x = -I, I)x = no real solutions     No (Complex roots: ...)OK                                      
+\sqrt { x } = 4                 x = 16                  x = 16                    No (Step-by-step wo...)OK                                      
+| x | = 3                       x = -3, 3               ERR: unsupported token |  No (unsupported tok...)The symbol | isn't supported yet. Check it against your photo.
+
+--- Group D: Inequalities ---
+x + 3 < 5                       x < 2                   ERR: unsupported token <  No (unsupported tok...)The symbol < isn't supported yet. Check it against your photo.
+2 x - 1 \geq 7                  x >= 4                  ERR: unsupported token \geqNo (unsupported tok...)The symbol \geq isn't supported yet. Check it against your photo.
+- x > 4                         x < -4                  ERR: unsupported token >  No (unsupported tok...)The symbol > isn't supported yet. Check it against your photo.
+3 x \leq 2 x + 5                x <= 5                  ERR: unsupported token \leqNo (unsupported tok...)The symbol \leq isn't supported yet. Check it against your photo.
+
+--- Group E: Odd or Invalid ---
+500 - 50 = 160                  False (arithmetic check)False                     3       The statement is false. The equation or numbers may have been misread from your photo.
+2 x = 2 x                       All real numbers / Infinite solutionstrue for all real x       No (Step-by-step wo...)OK                                      
+x = x + 1                       No solution (empty set) x = no solution           No (Step-by-step wo...)OK                                      
+2 x + 3 y = 74                  Indeterminate / Two unknownsERR: only single-variable equations supportedNo (only single-var...)Only equations with one unknown (such as x) are supported.
+x + y = 10                      Indeterminate / Two unknownsERR: only single-variable equations supportedNo (only single-var...)Only equations with one unknown (such as x) are supported.
+\frac x y                       x/y (expression in two vars)ERR: expected {           No (expected {...)expected {                              
+\frac { 1 } { 0 }               Undefined (division by zero)ERR: undefined (division by zero)No (undefined (divi...)This divides by zero.                   
+5 x + 50 =                      Syntax error (incomplete)ERR: the equation is incomplete: nothing after the equals signNo (the equation is...)The equation is incomplete: nothing after the equals sign.
+= 160                           Syntax error (incomplete)ERR: empty side of '='    No (empty side of '...)empty side of '='                       
+2 x + 3                         2x + 3 (expression, not equation)2*x + 3                   No (Step-by-step wo...)Equation mode expects one equals sign and one unknown, such as 2x + 3 = 7.
+x ^ 2 = y                       Two variables nonlinear ERR: only single-variable equations supportedNo (only single-var...)Only equations with one unknown (such as x) are supported.
+
+--- Group F: Recognizer Variants ---
+\dfrac { 1 } { 2 }              1/2                     1/2                       1       OK                                      
+3 \cdot 4                       12                      12                        2       OK                                      
+\sqrt [ 3 ] { 8 }               2                       2                         No (Step-by-step wo...)OK                                      
+2 x ^ { 2 } = 8                 x = -2, 2               x = -2, 2                 No (Step-by-step wo...)OK                                      
+1 0 0                           100                     100                       1       OK                                      
+3 . 5 + 1                       4.5 (or 9/2)            9/2                       3       OK                                      
+x = 5                           x = 5                   x = 5                     2       OK                                      
+5 = 5                           True (arithmetic check) True                      2       OK                                      
+
+==================================================================================================================================
+
+DETAILED ANALYSIS OF FAILURES, LIMITATIONS, AND SURPRISING BEHAVIORS:
+==================================================================================================================================
+
+[Group C: Nonlinear] 'x ^ 2 = 9':
+   Expected Math Answer : x = -3, 3
+   Program Answer/Status: x = -3, 3
+   Steps Generated      : 0 steps (note: Step-by-step working isn't available for this expression.)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver result: x = -3, 3. Steps availability: Step-by-step working isn't available for this expression.
+
+[Group C: Nonlinear] 'x ^ 2 - 5 x + 6 = 0':
+   Expected Math Answer : x = 2, 3
+   Program Answer/Status: x = 2, 3
+   Steps Generated      : 0 steps (note: Step-by-step working isn't available for this expression.)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver result: x = 2, 3. Steps availability: Step-by-step working isn't available for this expression.
+
+[Group C: Nonlinear] 'x ^ 2 + 1 = 0':
+   Expected Math Answer : No real solution (or x = -I, I)
+   Program Answer/Status: x = no real solutions
+   Steps Generated      : 0 steps (note: Complex roots: -I, I)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver result: x = no real solutions. Steps availability: Complex roots: -I, I
+
+[Group C: Nonlinear] '\\sqrt { x } = 4':
+   Expected Math Answer : x = 16
+   Program Answer/Status: x = 16
+   Steps Generated      : 0 steps (note: Step-by-step working isn't available for this expression.)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver result: x = 16. Steps availability: Step-by-step working isn't available for this expression.
+
+[Group C: Nonlinear] '| x | = 3':
+   Expected Math Answer : x = -3, 3
+   Program Answer/Status: Error: unsupported token |
+   Steps Generated      : 0 steps (note: unsupported token |)
+   UI Review Message    : The symbol | isn't supported yet. Check it against your photo. (Warnings: [])
+   Diagnosis/Details    : Solver rejected valid input: error='unsupported token |'
+   Diagnosis/Details    : Solver result: None. Steps availability: unsupported token |
+
+[Group D: Inequalities] 'x + 3 < 5':
+   Expected Math Answer : x < 2
+   Program Answer/Status: Error: unsupported token <
+   Steps Generated      : 0 steps (note: unsupported token <)
+   UI Review Message    : The symbol < isn't supported yet. Check it against your photo. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token <', UI='The symbol < isn't supported yet. Check it against your photo.'
+   Diagnosis/Details    : Solver rejected inequality: error='unsupported token <'
+
+[Group D: Inequalities] '2 x - 1 \\geq 7':
+   Expected Math Answer : x >= 4
+   Program Answer/Status: Error: unsupported token \geq
+   Steps Generated      : 0 steps (note: unsupported token \geq)
+   UI Review Message    : The symbol \geq isn't supported yet. Check it against your photo. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token \geq', UI='The symbol \geq isn't supported yet. Check it against your photo.'
+   Diagnosis/Details    : Solver rejected inequality: error='unsupported token \geq'
+
+[Group D: Inequalities] '- x > 4':
+   Expected Math Answer : x < -4
+   Program Answer/Status: Error: unsupported token >
+   Steps Generated      : 0 steps (note: unsupported token >)
+   UI Review Message    : The symbol > isn't supported yet. Check it against your photo. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token >', UI='The symbol > isn't supported yet. Check it against your photo.'
+   Diagnosis/Details    : Solver rejected inequality: error='unsupported token >'
+
+[Group D: Inequalities] '3 x \\leq 2 x + 5':
+   Expected Math Answer : x <= 5
+   Program Answer/Status: Error: unsupported token \leq
+   Steps Generated      : 0 steps (note: unsupported token \leq)
+   UI Review Message    : The symbol \leq isn't supported yet. Check it against your photo. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='unsupported token \leq', UI='The symbol \leq isn't supported yet. Check it against your photo.'
+   Diagnosis/Details    : Solver rejected inequality: error='unsupported token \leq'
+
+[Group E: Odd or Invalid] '500 - 50 = 160':
+   Expected Math Answer : False (arithmetic check)
+   Program Answer/Status: False
+   Steps Generated      : 3 steps (note: None)
+   UI Review Message    : None (Warnings: ['The statement is false. The equation or numbers may have been misread from your photo.'])
+   Diagnosis/Details    : Solver: ok=True, result=False, error=None, UI friendly message='None'
+
+[Group E: Odd or Invalid] '2 x = 2 x':
+   Expected Math Answer : All real numbers / Infinite solutions
+   Program Answer/Status: true for all real x
+   Steps Generated      : 0 steps (note: Step-by-step working isn't available for this expression.)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver: ok=True, result=true for all real x, error=None, UI friendly message='None'
+
+[Group E: Odd or Invalid] 'x = x + 1':
+   Expected Math Answer : No solution (empty set)
+   Program Answer/Status: x = no solution
+   Steps Generated      : 0 steps (note: Step-by-step working isn't available for this expression.)
+   UI Review Message    : None (Warnings: [])
+   Diagnosis/Details    : Solver: ok=True, result=x = no solution, error=None, UI friendly message='None'
+
+[Group E: Odd or Invalid] '2 x + 3 y = 74':
+   Expected Math Answer : Indeterminate / Two unknowns
+   Program Answer/Status: Error: only single-variable equations supported
+   Steps Generated      : 0 steps (note: only single-variable equations supported)
+   UI Review Message    : Only equations with one unknown (such as x) are supported. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='only single-variable equations supported', UI='Only equations with one unknown (such as x) are supported.'
+   Diagnosis/Details    : Solver: ok=False, result=None, error=only single-variable equations supported, UI friendly message='Only equations with one unknown (such as x) are supported.'
+
+[Group E: Odd or Invalid] 'x + y = 10':
+   Expected Math Answer : Indeterminate / Two unknowns
+   Program Answer/Status: Error: only single-variable equations supported
+   Steps Generated      : 0 steps (note: only single-variable equations supported)
+   UI Review Message    : Only equations with one unknown (such as x) are supported. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='only single-variable equations supported', UI='Only equations with one unknown (such as x) are supported.'
+   Diagnosis/Details    : Solver: ok=False, result=None, error=only single-variable equations supported, UI friendly message='Only equations with one unknown (such as x) are supported.'
+
+[Group E: Odd or Invalid] '\\frac x y':
+   Expected Math Answer : x/y (expression in two vars)
+   Program Answer/Status: Error: expected {
+   Steps Generated      : 0 steps (note: expected {)
+   UI Review Message    : expected { (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='expected {', UI='expected {'
+   Diagnosis/Details    : Solver: ok=False, result=None, error=expected {, UI friendly message='expected {'
+
+[Group E: Odd or Invalid] '\\frac { 1 } { 0 }':
+   Expected Math Answer : Undefined (division by zero)
+   Program Answer/Status: Error: undefined (division by zero)
+   Steps Generated      : 0 steps (note: undefined (division by zero))
+   UI Review Message    : This divides by zero. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='undefined (division by zero)', UI='This divides by zero.'
+   Diagnosis/Details    : Solver: ok=False, result=None, error=undefined (division by zero), UI friendly message='This divides by zero.'
+
+[Group E: Odd or Invalid] '5 x + 50 =':
+   Expected Math Answer : Syntax error (incomplete)
+   Program Answer/Status: Error: the equation is incomplete: nothing after the equals sign
+   Steps Generated      : 0 steps (note: the equation is incomplete: nothing after the equals sign)
+   UI Review Message    : The equation is incomplete: nothing after the equals sign. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='the equation is incomplete: nothing after the equals sign', UI='The equation is incomplete: nothing after the equals sign.'
+   Diagnosis/Details    : Solver: ok=False, result=None, error=the equation is incomplete: nothing after the equals sign, UI friendly message='The equation is incomplete: nothing after the equals sign.'
+
+[Group E: Odd or Invalid] '= 160':
+   Expected Math Answer : Syntax error (incomplete)
+   Program Answer/Status: Error: empty side of '='
+   Steps Generated      : 0 steps (note: empty side of '=')
+   UI Review Message    : empty side of '=' (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='empty side of '='', UI='empty side of '=''
+   Diagnosis/Details    : Solver: ok=False, result=None, error=empty side of '=', UI friendly message='empty side of '=''
+
+[Group E: Odd or Invalid] '2 x + 3':
+   Expected Math Answer : 2x + 3 (expression, not equation)
+   Program Answer/Status: 2*x + 3
+   Steps Generated      : 0 steps (note: Step-by-step working isn't available for this expression.)
+   UI Review Message    : None (Warnings: ['Equation mode expects one equals sign and one unknown, such as 2x + 3 = 7.'])
+   Diagnosis/Details    : Solver: ok=True, result=2*x + 3, error=None, UI friendly message='None'
+
+[Group E: Odd or Invalid] 'x ^ 2 = y':
+   Expected Math Answer : Two variables nonlinear
+   Program Answer/Status: Error: only single-variable equations supported
+   Steps Generated      : 0 steps (note: only single-variable equations supported)
+   UI Review Message    : Only equations with one unknown (such as x) are supported. (Warnings: [])
+   Diagnosis/Details    : Rejected as expected/unsupported: error='only single-variable equations supported', UI='Only equations with one unknown (such as x) are supported.'
+   Diagnosis/Details    : Solver: ok=False, result=None, error=only single-variable equations supported, UI friendly message='Only equations with one unknown (such as x) are supported.'
