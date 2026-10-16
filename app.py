@@ -39,29 +39,43 @@ if file is not None:
     if looks_sideways(image):
         st.info("The writing looks sideways. Try Left 90° or Right 90° above.")
     st.image(image, width="stretch")
+    crop = None
+    if BACKEND != "legacy":
+        try:
+            crop = prep(image, max_side=DEFAULT_MAX_SIDE)
+            if getattr(crop, "warning", None):
+                st.warning(crop.warning)
+            if getattr(crop, "num_lines", 1) > 1:
+                st.caption("Multiple lines of writing detected.")
+        except Exception as e:
+            st.warning(f"No handwriting found: {e}")
+
     with st.expander("What the model sees"):
         try:
             if BACKEND == "legacy":
                 canvas, _ = preprocess(image)
                 st.image((canvas * 255).astype("uint8"), caption="Cropped handwriting", width="stretch")
-            else:
-                crop = prep(image, max_side=DEFAULT_MAX_SIDE)
+            elif crop is not None:
                 st.image(crop, caption="Cropped handwriting", width="stretch")
         except Exception as e:
             st.warning(f"No handwriting found: {e}")
+
     if st.button("Read equation"):
-        st.session_state.pop("latex", None)
-        st.session_state.pop("solved_for", None)
-        try:
-            with st.spinner("Recognising equation in image..."):
-                if BACKEND == "legacy":
-                    st.session_state["latex"] = recognizer_old.recognize(image)
-                else:
-                    st.session_state["latex"] = recognize(image, max_side=DEFAULT_MAX_SIDE)
-        except NotImplementedError as e:
-            st.info(f"{e} Type or paste the LaTeX below.")
-        except Exception as e:
-            st.error(f"Couldn't read this image: {e}. Try a closer photo, or type the LaTeX below.")
+        if crop is not None and getattr(crop, "clipped_by_crop", False):
+            st.error("Handwriting was clipped by crop. Retake the photo with more space around the equation.")
+        else:
+            st.session_state.pop("latex", None)
+            st.session_state.pop("solved_for", None)
+            try:
+                with st.spinner("Recognising equation in image..."):
+                    if BACKEND == "legacy":
+                        st.session_state["latex"] = recognizer_old.recognize(image)
+                    else:
+                        st.session_state["latex"] = recognize(image, max_side=DEFAULT_MAX_SIDE, crop=crop)
+            except NotImplementedError as e:
+                st.info(f"{e} Type or paste the LaTeX below.")
+            except Exception as e:
+                st.error(f"Couldn't read this image: {e}. Try a closer photo, or type the LaTeX below.")
 
 # 2. what was read (editable)
 st.subheader("What was read")
