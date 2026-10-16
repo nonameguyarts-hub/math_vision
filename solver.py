@@ -234,8 +234,74 @@ def format_inequality_solution(expr, var):
         return " or ".join(sorted(parts, key=lambda p: ("<" not in p, p)))
     return parse_and(expr, var)
 
+def format_sigfigs(val, sigfigs=6):
+    try:
+        f = val.evalf(sigfigs)
+        return f"{float(f):.{sigfigs}g}"
+    except Exception:
+        return str(val.evalf(sigfigs))
+
+def is_ugly(sol):
+    try:
+        ltx = sp.latex(sol)
+        if len(ltx) > 60:
+            return True
+        if sol.has(sp.I):
+            return True
+        if re.search(r"\\sqrt.*\\sqrt", ltx):
+            return True
+    except Exception:
+        pass
+    return False
+
+def is_ugly_complex(sol):
+    try:
+        ltx = sp.latex(sol)
+        if len(ltx) > 60:
+            return True
+        if re.search(r"\\sqrt.*\\sqrt", ltx):
+            return True
+    except Exception:
+        pass
+    return False
+
+def format_complex_note(c_sols, var='x'):
+    evals = [s.evalf(6) for s in c_sols]
+    if len(evals) == 2:
+        re1, im1 = sp.re(evals[0]), sp.im(evals[0])
+        re2, im2 = sp.re(evals[1]), sp.im(evals[1])
+        if abs(re1 - re2) < 1e-4 and abs(abs(im1) - abs(im2)) < 1e-4:
+            re_val = format_sigfigs(re1, 6)
+            im_val = format_sigfigs(abs(im1), 6)
+            if abs(float(re1)) < 1e-4:
+                return f"{var} \\approx \\pm {im_val}i"
+            else:
+                return f"{var} \\approx {re_val} \\pm {im_val}i"
+    parts = []
+    for s in evals:
+        re1, im1 = sp.re(s), sp.im(s)
+        re_val = format_sigfigs(re1, 6)
+        im_val = format_sigfigs(abs(im1), 6)
+        sign = "+" if im1 >= 0 else "-"
+        if abs(float(re1)) < 1e-4:
+            parts.append(f"{'-' if im1 < 0 else ''}{im_val}i")
+        else:
+            parts.append(f"{re_val} {sign} {im_val}i")
+    return f"{var} \\approx " + ", ".join(parts)
+
+def format_inequality_latex(formatted_str):
+    if formatted_str == "no solution":
+        return r"\text{no solution}"
+    if formatted_str.startswith("true for all real "):
+        var = formatted_str.split()[-1]
+        return rf"\text{{true for all real }} {var}"
+    s = formatted_str.replace("<=", "\\leq ").replace(">=", "\\geq ")
+    s = re.sub(r"\bor\b", lambda _: r"\text{ or }", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
 def solve_latex(s):
-    res = {"input": s, "ok": False, "kind": None, "result": None, "approx": None, "error": None, "note": None}
+    res = {"input": s, "ok": False, "kind": None, "result": None, "approx": None, "error": None, "note": None, "latex": None}
     try:
         toks = normalize_latex(s).split()
         if not toks: raise ParseError("empty")
@@ -257,11 +323,17 @@ def solve_latex(s):
         if len(exprs) == 1:
             e = exprs[0]
             if e.free_symbols:
-                res.update(kind="simplify", result=str(sp.simplify(e)))
+                simplified = sp.simplify(e)
+                res.update(kind="simplify", result=str(simplified), latex=sp.latex(simplified))
             else:
                 v = sp.simplify(e)
                 res.update(kind="value", result=str(v))
                 if not v.is_Integer: res["approx"] = round(float(v), 6)
+                latex_val = sp.latex(v)
+                if not v.is_Integer and res.get("approx") is not None:
+                    res["latex"] = f"{latex_val} = {res['approx']}"
+                else:
+                    res["latex"] = latex_val
         elif len(ops) >= 1 and all(op in ("<", ">", "<=", ">=") for op in ops):
             op_map = {"<": sp.StrictLessThan, "<=": sp.LessThan, ">": sp.StrictGreaterThan, ">=": sp.GreaterThan}
             if all(not e.free_symbols for e in exprs):
@@ -273,7 +345,7 @@ def solve_latex(s):
                     if not cmp_ok:
                         all_ok = False
                         break
-                res.update(kind="check", result=str(bool(all_ok)))
+                res.update(kind="check", result=str(bool(all_ok)), latex=r"\text{True}" if all_ok else r"\text{False}")
             else:
                 syms = sorted(set().union(*(e.free_symbols for e in exprs)), key=str)
                 if len(syms) != 1: raise ParseError("only single-variable inequalities supported")
@@ -281,35 +353,55 @@ def solve_latex(s):
                 rels = [op_map[ops[k]](exprs[k], exprs[k + 1]) for k in range(len(exprs) - 1)]
                 sol = sp.reduce_inequalities(rels, var)
                 formatted = format_inequality_solution(sol, var)
+                lat = format_inequality_latex(formatted)
                 if sol is sp.S.true:
-                    res.update(kind="identity", result=formatted)
+                    res.update(kind="identity", result=formatted, latex=lat)
                 else:
-                    res.update(kind="solve", result=formatted)
+                    res.update(kind="solve", result=formatted, latex=lat)
         elif all(op == "=" for op in ops):
             if all(not e.free_symbols for e in exprs):
                 ok = all(sp.simplify(exprs[k] - exprs[k + 1]) == 0 for k in range(len(exprs) - 1))
-                res.update(kind="check", result=str(ok))
+                res.update(kind="check", result=str(ok), latex=r"\text{True}" if ok else r"\text{False}")
             elif len(exprs) == 2:
                 syms = sorted(exprs[0].free_symbols | exprs[1].free_symbols, key=str)
                 if len(syms) != 1: raise ParseError("only single-variable equations supported")
                 var = syms[0]
                 diff = sp.simplify(exprs[0] - exprs[1])
                 if diff == 0:
-                    res.update(kind="identity", result=f"true for all real {var}")
+                    res.update(kind="identity", result=f"true for all real {var}", latex=rf"\text{{true for all real }} {var}")
                 else:
                     sols = sp.solve(sp.Eq(exprs[0], exprs[1]), var)
                     real_sols = [s for s in sols if s.is_real or (s.is_real is None and sp.simplify(sp.im(s)) == 0)]
                     complex_sols = [s for s in sols if s not in real_sols]
                     if not sols:
-                        res.update(kind="solve", result=f"{var} = no solution")
+                        res.update(kind="solve", result=f"{var} = no solution", latex=r"\text{no solution}")
                     elif not real_sols and complex_sols:
+                        if any(is_ugly_complex(s) for s in complex_sols):
+                            c_note = f"Complex roots: ${format_complex_note(complex_sols, var)}$"
+                        else:
+                            c_note = f"Complex roots: {', '.join(map(str, complex_sols))}"
                         res.update(kind="solve", result=f"{var} = no real solutions",
-                                   note=f"Complex roots: {', '.join(map(str, complex_sols))}")
-                    elif real_sols and complex_sols:
-                        res.update(kind="solve", result=f"{var} = {', '.join(map(str, real_sols))}",
-                                   note=f"Complex roots: {', '.join(map(str, complex_sols))}")
+                                   note=c_note, latex=r"\text{no real solutions}")
                     else:
-                        res.update(kind="solve", result=f"{var} = {', '.join(map(str, real_sols))}")
+                        if any(is_ugly(s) for s in real_sols):
+                            latex_sol = f"{var} \\approx " + ",\\; ".join(format_sigfigs(s, 6) for s in real_sols)
+                            exact_sol = f"{var} = " + ",\\; ".join(sp.latex(s) for s in real_sols)
+                            res["exact_latex"] = exact_sol
+                        else:
+                            latex_sol = f"{var} = " + ",\\; ".join(sp.latex(s) for s in real_sols)
+
+                        update_kwargs = {
+                            "kind": "solve",
+                            "result": f"{var} = {', '.join(map(str, real_sols))}",
+                            "latex": latex_sol
+                        }
+                        if complex_sols:
+                            if any(is_ugly_complex(s) for s in complex_sols):
+                                c_note = f"Complex roots: ${format_complex_note(complex_sols, var)}$"
+                            else:
+                                c_note = f"Complex roots: {', '.join(map(str, complex_sols))}"
+                            update_kwargs["note"] = c_note
+                        res.update(**update_kwargs)
             else:
                 raise ParseError("unsupported equation form")
         else:

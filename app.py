@@ -1,22 +1,30 @@
 """MathVision UI.   Run:  streamlit run app.py"""
+import os
 import streamlit as st
 from PIL import Image, ImageOps
 
+st.set_page_config(page_title="MathVision", layout="centered", initial_sidebar_state="collapsed")
+
+# Hide sidebar and sidebar collapsed control completely
+st.markdown("""
+<style>
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 from preprocess import looks_sideways, preprocess
-import recognizer_old
 from recognizer import DEFAULT_MAX_SIDE, prep, recognize
 from steps import steps_for
 from ui_checks import MODES, review
 
-st.set_page_config(page_title="MathVision", page_icon="∑")
+BACKEND = os.environ.get("MATHVISION_BACKEND", "uni-mumer")
+if BACKEND == "legacy":
+    import recognizer_old
+
 st.title("MathVision")
 st.caption("Photograph a handwritten equation, check what was read, then solve it.")
-
-backend = st.sidebar.radio(
-    "Recognizer Backend",
-    ["Uni-MuMER (Qwen3-VL-2B)", "Legacy (MathVision CNN+GRU)"],
-    help="Uni-MuMER is the fine-tuned vision-language model. Legacy is the custom CNN+GRU model."
-)
 
 mode = st.radio("Mode", MODES, horizontal=True,
                 help="Arithmetic expects numbers only. Equation expects one unknown, such as 2x + 3 = 7.")
@@ -33,22 +41,23 @@ if file is not None:
     st.image(image, width="stretch")
     with st.expander("What the model sees"):
         try:
-            if backend.startswith("Uni-MuMER"):
-                crop = prep(image, max_side=DEFAULT_MAX_SIDE)
-                st.image(crop, caption=f"Cropped handwriting (size {crop.size}). Dark ink on light background.", width="stretch")
-            else:
+            if BACKEND == "legacy":
                 canvas, _ = preprocess(image)
-                st.image((canvas * 255).astype("uint8"), caption="128px normalized strip (Legacy CNN+GRU).", width="stretch")
+                st.image((canvas * 255).astype("uint8"), caption="Cropped handwriting", width="stretch")
+            else:
+                crop = prep(image, max_side=DEFAULT_MAX_SIDE)
+                st.image(crop, caption="Cropped handwriting", width="stretch")
         except Exception as e:
             st.warning(f"No handwriting found: {e}")
     if st.button("Read equation"):
+        st.session_state.pop("latex", None)
+        st.session_state.pop("solved_for", None)
         try:
-            if backend.startswith("Uni-MuMER"):
-                with st.spinner("Recognizing equation with Uni-MuMER (CPU)..."):
-                    st.session_state["latex"] = recognize(image, max_side=DEFAULT_MAX_SIDE)
-            else:
-                with st.spinner("Recognizing equation with Legacy model..."):
+            with st.spinner("Recognising equation in image..."):
+                if BACKEND == "legacy":
                     st.session_state["latex"] = recognizer_old.recognize(image)
+                else:
+                    st.session_state["latex"] = recognize(image, max_side=DEFAULT_MAX_SIDE)
         except NotImplementedError as e:
             st.info(f"{e} Type or paste the LaTeX below.")
         except Exception as e:
@@ -79,9 +88,28 @@ if st.session_state.get("solved_for") == (latex, mode):
     elif not confirmed:
         st.info("Tick the box above once you've checked the symbols.")
     else:
+        res = rev["result"]
+        rendered_answer = False
+        if res.get("latex"):
+            try:
+                st.latex(res["latex"])
+                rendered_answer = True
+            except Exception:
+                rendered_answer = False
+        if not rendered_answer:
+            st.write(res["result"])
+
+        if res.get("exact_latex"):
+            with st.expander("Exact form"):
+                st.latex(res["exact_latex"])
+        elif res.get("approx") is not None and not res.get("latex"):
+            st.caption(f"About {res['approx']}")
+
+        if res.get("note"):
+            st.caption(res["note"])
+
         out = steps_for(latex)
         if out["ok"]:
-            st.latex(out["answer"])
             st.subheader("Steps")
             for i, row in enumerate(out["steps"], 1):
                 c1, c2, c3 = st.columns([1, 5, 4])
@@ -89,11 +117,8 @@ if st.session_state.get("solved_for") == (latex, mode):
                 c2.latex(row["latex"])
                 c3.write(row["why"])
         else:
-            res = rev["result"]
-            st.write(res["result"])
-            if res["approx"] is not None:
-                st.caption(f"About {res['approx']}")
-            st.caption(out["note"])
+            if out.get("note") and out.get("note") != res.get("note") and "not available" not in out["note"].lower():
+                st.caption(out["note"])
 
 st.divider()
 st.caption("Always compare the recognized equation with your photo before trusting an answer.")

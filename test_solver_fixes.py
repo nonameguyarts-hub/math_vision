@@ -284,6 +284,67 @@ def test_phase2_fixes_followup():
     print("PASS: Phase 2 fixes follow-up checks")
 
 
+def test_latex_answers():
+    # 1. 2 x + 6 = 90
+    r1 = solve_latex("2 x + 6 = 90")
+    assert r1["ok"] is True
+    assert r1["latex"] == "x = 42"
+    assert r1["result"] == "x = 42"
+
+    # 2. \frac { 3 } { 4 } + \frac { 1 } { 2 }
+    r2 = solve_latex(r"\frac { 3 } { 4 } + \frac { 1 } { 2 }")
+    assert r2["ok"] is True
+    assert r2["latex"] == r"\frac{5}{4} = 1.25"
+    assert r2["result"] == "5/4"
+
+    # 3. x ^ 2 = 9
+    r3 = solve_latex("x ^ 2 = 9")
+    assert r3["ok"] is True
+    assert r3["latex"] == r"x = -3,\; 3"
+    assert r3["result"] == "x = -3, 3"
+
+    # 4. x ^ 2 + 1 = 0
+    r4 = solve_latex("x ^ 2 + 1 = 0")
+    assert r4["ok"] is True
+    assert r4["latex"] == r"\text{no real solutions}"
+    assert "no real solutions" in r4["result"]
+
+    # 5. x ^ 3 - 2 x ^ 2 + 5 x = 8 (cubic: must produce short decimal answer, not closed form)
+    r5 = solve_latex("x ^ 3 - 2 x ^ 2 + 5 x = 8")
+    assert r5["ok"] is True
+    assert r5["latex"] == r"x \approx 1.75217"
+    assert len(r5["latex"]) < 30, f"Expected short decimal answer, got {r5['latex']}"
+    assert r5.get("exact_latex") is not None, "Expected exact_latex in expander"
+    assert "sqrt" in r5["exact_latex"].lower() or "frac" in r5["exact_latex"].lower()
+    assert r5.get("note") is not None and r"\approx" in r5["note"], f"Expected decimal complex roots note: {r5.get('note')}"
+
+    # 6. x + 3 < 5
+    r6 = solve_latex("x + 3 < 5")
+    assert r6["ok"] is True
+    assert r6["latex"] == "x < 2"
+    assert r6["result"] == "x < 2"
+
+    # 7. x ^ 2 > 9
+    r7 = solve_latex("x ^ 2 > 9")
+    assert r7["ok"] is True
+    assert r7["latex"] == r"x < -3 \text{ or } x > 3"
+    assert r7["result"] == "x < -3 or x > 3"
+
+    # 8. 2 x = 2 x
+    r8 = solve_latex("2 x = 2 x")
+    assert r8["ok"] is True
+    assert r8["latex"] == r"\text{true for all real } x"
+    assert r8["result"] == "true for all real x"
+
+    # 9. x = x + 1
+    r9 = solve_latex("x = x + 1")
+    assert r9["ok"] is True
+    assert r9["latex"] == r"\text{no solution}"
+    assert r9["result"] == "x = no solution"
+
+    print("PASS: UI Round (latex answers on all 9 required expressions)")
+
+
 if __name__ == "__main__":
     test_phase1_identity()
     test_phase1_frac_aliases()
@@ -294,4 +355,6 @@ if __name__ == "__main__":
     test_followup_negative_base_roots()
     test_phase2_inequalities()
     test_phase2_fixes_followup()
-    print("\nALL PHASE 1 & PHASE 2 TESTS PASSED!")
+    test_latex_answers()
+    print("\nALL PHASE 1, PHASE 2 & UI ROUND TESTS PASSED!")
+
