@@ -2,7 +2,49 @@
 import re
 from solver import normalize_latex, solve_latex, split_relation
 
-MODES = ("Arithmetic", "Equation")
+MODES = ("Auto", "Arithmetic", "Equation")
+
+
+def detect_mode(latex: str) -> str:
+    """Choose mode from recognized LaTeX: letters present -> Equation; no letters -> Arithmetic."""
+    norm = normalize_latex(latex)
+    cleaned = re.sub(r"\\[a-zA-Z]+", "", norm)
+    cleaned = re.sub(r"(?<=\d)\s*[xX]\s*(?=\d)", " * ", cleaned)
+    has_letters = bool(re.search(r"[a-zA-Z]", cleaned))
+    return "Equation" if has_letters else "Arithmetic"
+
+
+def has_nested_radicals(latex: str) -> bool:
+    """Return True if LaTeX contains a radical inside another radical."""
+    radical_depth = 0
+    brace_stack = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex.startswith(r"\sqrt", i):
+            if radical_depth > 0:
+                return True
+            i += 5
+            if i < n and latex[i] == "[":
+                j = latex.find("]", i)
+                if j != -1:
+                    i = j + 1
+            while i < n and latex[i].isspace():
+                i += 1
+            if i < n and latex[i] == "{":
+                brace_stack.append(True)
+                radical_depth += 1
+                i += 1
+            continue
+        elif latex[i] == "{":
+            brace_stack.append(False)
+        elif latex[i] == "}":
+            if brace_stack:
+                is_rad = brace_stack.pop()
+                if is_rad:
+                    radical_depth -= 1
+        i += 1
+    return False
 
 
 def friendly(error: str) -> str:
@@ -26,7 +68,7 @@ def friendly(error: str) -> str:
     return e
 
 
-def review(latex: str, mode: str = "Arithmetic") -> dict:
+def review(latex: str, mode: str = "Auto") -> dict:
     """Return the solver result plus warnings the UI must show before an answer is trusted.
 
     needs_confirm=True means the user has to tick 'the symbols look right' first.
@@ -53,7 +95,12 @@ def review(latex: str, mode: str = "Arithmetic") -> dict:
         out["warnings"].append(
             "The statement is false. The equation or numbers may have been misread from your photo.")
         out["needs_confirm"] = True
-    if r["result"] and len(re.findall(r"\d", r["result"])) > 20:
-        out["warnings"].append("The result is a very large number. A digit may have been misread.")
-        out["needs_confirm"] = True
+    displayed = r.get("latex") if r.get("exact_latex") else (r.get("result") or "")
+    if displayed:
+        has_large = any(len(d) > 20 for d in re.findall(r"\d+", re.sub(r"\\[a-zA-Z]+", "", displayed)))
+        if not has_large and not r.get("exact_latex"):
+            has_large = len(re.findall(r"\d", displayed)) > 20
+        if has_large:
+            out["warnings"].append("The result is a very large number. A digit may have been misread.")
+            out["needs_confirm"] = True
     return out

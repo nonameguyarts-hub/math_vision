@@ -113,6 +113,35 @@ def prep(img: Image.Image, rotate: int = 0, margin: float = 0.12, max_side: int 
         out.prep_info = {"warning": out.warning, "num_lines": 1, "crop_box": out.crop_box, "ink_box": out.ink_box}
         return out
 
+    # Contrast-aware filtering: compute ink strength per component (darkness + saturation)
+    # Discard components below ~40-50% of strong-stroke level (90th percentile)
+    arr_rgb = np.array(img)
+    sat = cv2.cvtColor(arr_rgb, cv2.COLOR_RGB2HSV)[:, :, 1]
+    comp_strengths = {}
+    st_vals = []
+    for i in candidates:
+        m = (lab == i)
+        d_val = float(diff[m].mean())
+        s_val = float(sat[m].mean())
+        st = d_val + 0.35 * s_val
+        comp_strengths[i] = st
+        if stats[i, cv2.CC_STAT_AREA] >= 15:
+            st_vals.append(st)
+
+    if not st_vals:
+        st_vals = [comp_strengths[i] for i in candidates]
+    if st_vals:
+        p90 = np.percentile(st_vals, 90)
+        thresh_st = 0.48 * p90
+        filtered = [i for i in candidates if comp_strengths[i] >= thresh_st]
+        if filtered:
+            candidates = filtered
+            # Zero out discarded ghost components in ink mask
+            clean_ink = np.zeros_like(ink)
+            for i in candidates:
+                clean_ink[lab == i] = 255
+            ink = clean_ink
+
     # Plausible height relative to median stroke height
     h_list = [stats[i, cv2.CC_STAT_HEIGHT] for i in candidates if stats[i, cv2.CC_STAT_AREA] >= 15 and max(stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]) / max(min(stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]), 1) < 4.0]
     med_h = np.median(h_list) if h_list else 25

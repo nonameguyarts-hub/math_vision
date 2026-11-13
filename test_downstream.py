@@ -25,6 +25,7 @@ test_cases = [
     (r"\sqrt { 16 }", "Arithmetic", "Exact square root"),
     (r"3 \times 4", "Arithmetic", "Times symbol"),
     ("2 x + 3 = 11", "Equation", "Standard linear equation"),
+    ("205 = x ^ 4 + 9 x ^ 3 + 13 x ^ 2 - x", "Auto", "Quartic equation from red-ink photo"),
 ]
 
 print("=" * 70)

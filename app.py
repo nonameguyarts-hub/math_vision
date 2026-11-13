@@ -17,7 +17,7 @@ st.markdown("""
 from preprocess import looks_sideways, preprocess
 from recognizer import DEFAULT_MAX_SIDE, prep, recognize
 from steps import steps_for
-from ui_checks import MODES, review
+from ui_checks import MODES, detect_mode, has_nested_radicals, review
 
 BACKEND = os.environ.get("MATHVISION_BACKEND", "uni-mumer")
 if BACKEND == "legacy":
@@ -25,9 +25,6 @@ if BACKEND == "legacy":
 
 st.title("MathVision")
 st.caption("Photograph a handwritten equation, check what was read, then solve it.")
-
-mode = st.radio("Mode", MODES, horizontal=True,
-                help="Arithmetic expects numbers only. Equation expects one unknown, such as 2x + 3 = 7.")
 
 # 1. photo
 file = st.file_uploader("Your photo", type=["png", "jpg", "jpeg"])
@@ -81,7 +78,11 @@ latex = st.text_input("Recognized LaTeX, edit if anything is wrong", key="latex"
 if latex.strip():
     st.latex(latex)
 
-rev = review(latex, mode)
+with st.expander("Advanced"):
+    mode_override = st.radio("Mode override", ["Auto", "Arithmetic", "Equation"], horizontal=True,
+                             help="Auto detects Equation mode if letters are present, otherwise Arithmetic.")
+
+rev = review(latex, mode_override)
 for w in rev["warnings"]:
     st.warning(w)
 confirmed = True
@@ -89,10 +90,10 @@ if rev["needs_confirm"]:
     confirmed = st.checkbox("The symbols match my photo")
 
 if st.button("Solve"):
-    st.session_state["solved_for"] = (latex, mode)
+    st.session_state["solved_for"] = (latex, mode_override)
 
 # 3. answer and steps (shown only for the exact text that was solved)
-if st.session_state.get("solved_for") == (latex, mode):
+if st.session_state.get("solved_for") == (latex, mode_override):
     st.subheader("Answer")
     if not rev["ok"]:
         st.error(f"{rev['error']} Edit the LaTeX above and try again.")
@@ -110,9 +111,10 @@ if st.session_state.get("solved_for") == (latex, mode):
         if not rendered_answer:
             st.write(res["result"])
 
-        if res.get("exact_latex"):
+        exact = res.get("exact_latex")
+        if exact and len(exact) <= 120 and not has_nested_radicals(exact):
             with st.expander("Exact form"):
-                st.latex(res["exact_latex"])
+                st.latex(exact)
         elif res.get("approx") is not None and not res.get("latex"):
             st.caption(f"About {res['approx']}")
 

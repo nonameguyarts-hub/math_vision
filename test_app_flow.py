@@ -9,25 +9,28 @@ from steps import steps_for
 from ui_checks import review
 
 photos = [
-    ("test_photos/WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg", "Photo 1", "Equation"),
-    ("test_photos/WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg", "Photo 2", "Equation"),
+    ("test_photos/WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg", "Photo 1", 0, "Auto"),
+    ("test_photos/WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg", "Photo 2", 0, "Auto"),
+    ("test_photos/WhatsApp Image 2026-11-13 at 9.28.44 AM.jpeg", "Photo 3 (Red ink)", 90, "Auto"),
 ]
 
 print(f"Running app verification with DEFAULT_MAX_SIDE = {DEFAULT_MAX_SIDE}...\n")
 
-for path, label, mode in photos:
+for path, label, rot, mode in photos:
     print("=" * 60)
-    print(f"Testing {label} ({path}) in Mode: {mode}")
+    print(f"Testing {label} ({path}) | rot={rot} | Mode: {mode}")
     print("=" * 60)
     
     img = Image.open(path)
+    if rot:
+        img = img.rotate(rot, expand=True)
     
     # 1. Preview ("What the model sees")
     crop = prep(img, max_side=DEFAULT_MAX_SIDE)
-    print(f"1. What the model sees: Crop size = {crop.size}")
+    print(f"1. What the model sees: Crop size = {crop.size}, warnings = {crop.warning}, num_lines = {crop.num_lines}")
     
     # 2. Read equation
-    latex = recognize(img, max_side=DEFAULT_MAX_SIDE)
+    latex = recognize(img, max_side=DEFAULT_MAX_SIDE, crop=crop)
     print(f"2. Recognized LaTeX: {repr(latex)}")
     
     # 3. UI Review / Guardrails
@@ -45,5 +48,5 @@ for path, label, mode in photos:
             for idx, s in enumerate(out["steps"], 1):
                 print(f"      Step {idx}: {s['latex']:<25} | Why: {s['why']}")
         else:
-            print(f"4. Solved without steps: {rev['result']['result']}")
+            print(f"4. Solved without steps: {rev['result'].get('latex') or rev['result']['result']}")
     print()
