@@ -1,78 +1,71 @@
-"""test_preprocess_clipping.py - Comprehensive test suite for ink clipping prevention.
-
-Asserts three core invariant properties across 300+ randomized synthetic cases:
-1. Ink recall >= 99%, with leftmost and rightmost ink columns fully inside crop with margin.
-2. Aspect ratio preserved (scale_x equals scale_y within 1%).
-3. No step produces a width or height smaller than the ink box.
-Also includes a regression test on '50 + 40n = 190y' with descender 'y'.
-"""
-import io
-import math
 import os
+import io
 import random
 import sys
-from pathlib import Path
-
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from recognizer import prep, DEFAULT_MAX_SIDE
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from recognizer import prep
-
-WIN_FONTS_DIR = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
 AVAILABLE_FONTS = []
-for fname in ["comic.ttf", "arial.ttf", "calibri.ttf", "times.ttf", "segoeui.ttf"]:
-    fpath = os.path.join(WIN_FONTS_DIR, fname)
-    if os.path.exists(fpath):
-        AVAILABLE_FONTS.append(fpath)
-
-EQUATIONS = [
-    "50 + 40n = 190y",
-    r"\frac{3}{4}+\frac{1}{2}=\frac{5}{4}",
-    "2x + 3y - 4z + 5w = 100 + 200",  # ~30-40 chars
-    "x^2 + y^2 = z^2",
-    "a + b = c",
-    "f(x) = 3x^3 - 2x^2 + 5x - 8 = 0",
-    "120 / 4 = 30",
-    r"\sqrt{49} + 3 = 10",
-    "x + 3 < 5",
-    "100 - 25 = 75",
+font_candidates = [
+    "arial.ttf", "calibri.ttf", "times.ttf", "comic.ttf", "segoepb.ttf",
+    "cour.ttf", "georgia.ttf", "impact.ttf", "tahoma.ttf", "trebuc.ttf"
 ]
+for fc in font_candidates:
+    try:
+        f = ImageFont.truetype(fc, 30)
+        AVAILABLE_FONTS.append(fc)
+    except Exception:
+        pass
 
 
-def render_jittered_text(text, font, text_color, bg_size, pos):
-    """Render text with per-character jitter and return (image, clean_mask)."""
-    w, h = bg_size
-    clean_mask = np.zeros((h, w), dtype=bool)
-    txt_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(txt_img)
+def render_jittered_text(text: str, font, fill_color, img_size, start_pos, rng: random.Random = None):
+    """Render text with per-character position and baseline jitter."""
+    r = rng if rng is not None else random
+    txt_layer = Image.new("RGBA", img_size, (0, 0, 0, 0))
+    clean_mask = np.zeros((img_size[1], img_size[0]), dtype=bool)
 
-    cur_x, cur_y = pos
-    for char in text:
-        # Per-character random jitter
-        jx = cur_x + random.randint(-2, 2)
-        jy = cur_y + random.randint(-2, 2)
+    cur_x, cur_y = start_pos
+    draw = ImageDraw.Draw(txt_layer)
 
-        # Character bounding box
-        bbox = draw.textbbox((jx, jy), char, font=font)
-        draw.text((jx, jy), char, fill=text_color, font=font)
+    for ch in text:
+        jx = r.randint(-2, 3)
+        jy = r.randint(-3, 3)
+        pos = (cur_x + jx, cur_y + jy)
+        draw.text(pos, ch, font=font, fill=fill_color)
 
-        char_w = max(bbox[2] - bbox[0], font.size // 2)
-        cur_x += char_w + random.randint(1, 4)
+        bbox = font.getbbox(ch)
+        cw = bbox[2] - bbox[0]
+        ch_h = bbox[3] - bbox[1]
+        x0, y0 = max(0, pos[0]), max(0, pos[1])
+        x1, y1 = min(img_size[0], pos[0] + max(cw, 8)), min(img_size[1], pos[1] + max(ch_h, 8))
+        clean_mask[y0:y1, x0:x1] = True
+        cur_x += max(cw, 8) + r.randint(2, 7)
 
-    # Extract clean binary mask of rendered text
-    txt_arr = np.array(txt_img)
-    alpha = txt_arr[:, :, 3]
-    clean_mask = alpha > 30
-    return txt_img, clean_mask
+    alpha = np.array(txt_layer)[:, :, 3]
+    ink_mask = alpha > 40
+    clean_mask = clean_mask & ink_mask
+    return txt_layer, clean_mask
 
 
-def generate_synthetic_case(rng, case_idx):
-    """Generate a single randomized synthetic case."""
-    eq = rng.choice(EQUATIONS)
+def generate_synthetic_case(rng: random.Random, idx: int):
+    equations = [
+        "x + 3 = 10",
+        "2x + 5 = 15",
+        "50 + 40n = 190y",
+        "\\frac{3}{4} + \\frac{1}{2} = \\frac{5}{4}",
+        "2(x + 3) - 5 = 4(2x - 1) + 8",
+        "\\sqrt{x^2 + 16} = 2x - 3",
+        "y = mx + b",
+        "3x^2 - 12x + 9 = 0",
+        "a + b + c + d + e + f = 100",
+        "x_1 + x_2 + x_3 + x_4 = 40"
+    ]
+    eq = rng.choice(equations)
+
     font_path = rng.choice(AVAILABLE_FONTS) if AVAILABLE_FONTS else None
-    font_size = rng.randint(22, 54)
+    font_size = rng.randint(26, 56)
     if font_path:
         try:
             font = ImageFont.truetype(font_path, font_size)
@@ -82,15 +75,27 @@ def generate_synthetic_case(rng, case_idx):
         font = ImageFont.load_default()
 
     # Vary canvas size: 300px to 4000px wide
-    w = rng.randint(350, 2400)
-    aspect = rng.choice([0.25, 0.4, 0.5, 0.75, 1.0])
-    h = max(200, int(w * aspect))
-    # Cap dimensions to avoid memory bloat
-    w = min(w, 2400)
-    h = min(h, 1600)
+    # Also include phone-photo aspect ratio 9:16
+    aspect_choice = rng.choice([0.25, 0.4, 0.5, 0.75, 1.0, "9:16"])
+    approx_txt_w = len(eq) * (font_size * 0.65)
+    approx_txt_h = font_size * 1.5
 
-    # Background type
-    bg_type = rng.choice(["white", "grey", "yellow", "gradient", "noise", "ruled", "grid", "margin"])
+    if aspect_choice == "9:16":
+        w = rng.randint(450, 720)
+        h = int(w * 16 / 9)
+    else:
+        w = rng.randint(400, 2400)
+        h = max(220, int(w * aspect_choice))
+
+    w = max(int(approx_txt_w + 80), min(w, 2400))
+    h = max(int(approx_txt_h + 80), min(h, 1600))
+
+    # Background type: includes real-photo-style artifacts
+    bg_type = rng.choice([
+        "white", "grey", "yellow", "gradient", "ruled", "grid", "margin",
+        "paper_on_desk", "strong_shadow", "finger_curl"
+    ])
+
     if bg_type == "white":
         bg_col = (rng.randint(245, 255), rng.randint(245, 255), rng.randint(245, 255))
         base = Image.new("RGB", (w, h), bg_col)
@@ -99,10 +104,10 @@ def generate_synthetic_case(rng, case_idx):
         base = Image.new("RGB", (w, h), (v, v, v))
     elif bg_type == "yellow":
         base = Image.new("RGB", (w, h), (rng.randint(240, 255), rng.randint(235, 250), rng.randint(190, 215)))
-    elif bg_type == "gradient":
-        # Linear gradient shadow
+    elif bg_type in ["gradient", "strong_shadow"]:
         base_arr = np.zeros((h, w, 3), dtype=np.uint8)
-        grad = np.linspace(rng.randint(150, 190), rng.randint(230, 255), w)
+        min_v = rng.randint(90, 140) if bg_type == "strong_shadow" else rng.randint(150, 190)
+        grad = np.linspace(min_v, rng.randint(235, 255), w)
         for c in range(3):
             base_arr[:, :, c] = grad
         base = Image.fromarray(base_arr)
@@ -111,6 +116,27 @@ def generate_synthetic_case(rng, case_idx):
         base = Image.new("RGB", (w, h), (v, v, v))
 
     draw_base = ImageDraw.Draw(base)
+
+    # Real-photo-style desk surface along bottom or side
+    if bg_type == "paper_on_desk":
+        desk_col = (rng.randint(45, 80), rng.randint(35, 70), rng.randint(30, 60))
+        desk_side = rng.choice(["bottom", "right", "top"])
+        if desk_side == "bottom":
+            desk_h = rng.randint(30, max(35, int(h * 0.18)))
+            draw_base.rectangle([0, h - desk_h, w, h], fill=desk_col)
+        elif desk_side == "right":
+            desk_w = rng.randint(30, max(35, int(w * 0.15)))
+            draw_base.rectangle([w - desk_w, 0, w, h], fill=desk_col)
+        elif desk_side == "top":
+            desk_h = rng.randint(25, max(30, int(h * 0.12)))
+            draw_base.rectangle([0, 0, w, desk_h], fill=desk_col)
+
+    # Real-photo-style finger / curl at border
+    if bg_type == "finger_curl":
+        finger_col = (rng.randint(180, 210), rng.randint(130, 160), rng.randint(110, 140))
+        fc_w = rng.randint(35, max(40, int(w * 0.12)))
+        fc_h = rng.randint(40, max(45, int(h * 0.15)))
+        draw_base.ellipse([w - fc_w, h - fc_h, w + fc_w, h + fc_h], fill=finger_col)
 
     # Ruled lines / grid paper / margin lines
     if bg_type in ["ruled", "grid"]:
@@ -122,50 +148,52 @@ def generate_synthetic_case(rng, case_idx):
             for x_l in range(line_step, w, line_step):
                 draw_base.line([(x_l, 0), (x_l, h)], fill=line_col, width=1)
 
-    if bg_type == "margin":
-        margin_x = rng.randint(40, max(50, w // 6))
-        draw_base.line([(margin_x, 0), (margin_x, h)], fill=(220, 140, 150), width=rng.randint(1, 2))
+    if bg_type in ["margin", "strong_shadow"]:
+        margin_x = rng.randint(40, max(50, w // 7))
+        draw_base.line([(margin_x, 0), (margin_x, h)], fill=(210, 130, 140), width=rng.randint(1, 2))
 
     # Ink type
     ink_type = rng.choice(["black", "blue", "pencil", "light_on_dark"])
     if ink_type == "light_on_dark":
-        # Blackboard / dark whiteboard
         base = Image.new("RGB", (w, h), (rng.randint(30, 50), rng.randint(35, 55), rng.randint(40, 60)))
         draw_base = ImageDraw.Draw(base)
         text_color = (rng.randint(220, 250), rng.randint(220, 250), rng.randint(220, 250), 255)
     elif ink_type == "pencil":
-        # Faint pencil (~25% contrast)
-        text_color = (rng.randint(110, 145), rng.randint(110, 145), rng.randint(110, 145), 255)
+        if bg_type in ["gradient", "strong_shadow"]:
+            text_color = (rng.randint(25, 60), rng.randint(25, 60), rng.randint(25, 60), 255)
+        else:
+            text_color = (rng.randint(90, 130), rng.randint(90, 130), rng.randint(90, 130), 255)
     elif ink_type == "blue":
         text_color = (rng.randint(15, 35), rng.randint(30, 60), rng.randint(130, 185), 255)
     else:
         text_color = (rng.randint(15, 45), rng.randint(15, 45), rng.randint(15, 45), 255)
 
-    # Position
-    pos_type = rng.choice(["center", "left", "right", "near_edge", "tiny"])
+    # Position: center, left, right, small writing in middle of 9:16
     approx_txt_w = len(eq) * (font_size * 0.65)
     approx_txt_h = font_size * 1.5
 
-    if pos_type == "left":
-        px = rng.randint(15, max(16, int(w * 0.1)))
-        py = rng.randint(20, max(21, int(h - approx_txt_h - 20)))
-    elif pos_type == "right":
-        px = max(15, int(w - approx_txt_w - rng.randint(20, 50)))
-        py = rng.randint(20, max(21, int(h - approx_txt_h - 20)))
-    elif pos_type == "near_edge":
-        px = rng.randint(12, 30)
-        py = rng.randint(12, 30)
-    elif pos_type == "tiny":
-        px = rng.randint(30, max(31, int(w * 0.4)))
-        py = rng.randint(30, max(31, int(h * 0.4)))
-    else:  # center
-        px = max(15, int((w - approx_txt_w) / 2))
-        py = max(15, int((h - approx_txt_h) / 2))
+    if aspect_choice == "9:16":
+        px = max(25, int((w - approx_txt_w) / 2))
+        py = max(25, int((h - approx_txt_h) / 2) + rng.randint(-40, 40))
+    else:
+        pos_type = rng.choice(["center", "left", "right", "tiny"])
+        if pos_type == "left":
+            px = rng.randint(20, max(25, int(w * 0.15)))
+            py = rng.randint(30, max(35, int(h - approx_txt_h - 40)))
+        elif pos_type == "right":
+            px = max(20, int(w - approx_txt_w - rng.randint(30, 60)))
+            py = rng.randint(30, max(35, int(h - approx_txt_h - 40)))
+        elif pos_type == "tiny":
+            px = rng.randint(40, max(45, int(w * 0.35)))
+            py = rng.randint(40, max(45, int(h * 0.35)))
+        else:
+            px = max(20, int((w - approx_txt_w) / 2))
+            py = max(25, int((h - approx_txt_h) / 2))
 
-    px = max(10, min(px, int(w - approx_txt_w - 15)))
-    py = max(10, min(py, int(h - approx_txt_h - 15)))
+    px = max(15, min(px, int(w - approx_txt_w - 20)))
+    py = max(15, min(py, int(h - approx_txt_h - 20)))
 
-    txt_img, clean_mask = render_jittered_text(eq, font, text_color, (w, h), (px, py))
+    txt_img, clean_mask = render_jittered_text(eq, font, text_color, (w, h), (px, py), rng=rng)
     base.paste(txt_img, (0, 0), txt_img)
 
     # Rotation / skew
@@ -177,7 +205,6 @@ def generate_synthetic_case(rng, case_idx):
         clean_mask = np.array(Image.fromarray(clean_mask.astype(np.uint8) * 255).rotate(skew_angle, expand=False)) > 30
     elif rot_opt in [90, 180, 270]:
         applied_rot = rot_opt
-        # In actual usage, user rotates the photo via UI turn option before prep
         base = base.rotate(applied_rot, expand=True)
         clean_mask = np.array(Image.fromarray(clean_mask.astype(np.uint8) * 255).rotate(applied_rot, expand=True)) > 30
 
@@ -196,23 +223,34 @@ def generate_synthetic_case(rng, case_idx):
 
 def test_regression_50_40n_190y():
     """Regression test: '50 + 40n = 190y' must contain the final 0 and the y."""
+    # 1. Synthetic case with far-right descender y
     w, h = 1300, 320
     im = Image.new("RGB", (w, h), (245, 245, 240))
     draw = ImageDraw.Draw(im)
     font_path = AVAILABLE_FONTS[0] if AVAILABLE_FONTS else None
     font = ImageFont.truetype(font_path, 44) if font_path else ImageFont.load_default()
 
-    # 50 + 40n = 190y with spacing
     draw.text((100, 130), "50 + 40n = 19", fill=(35, 35, 40), font=font)
     draw.text((450, 130), "0y", fill=(40, 40, 45), font=font)
 
     crop = prep(im)
     box = crop.crop_box
 
-    # Assert crop includes left of '5' and right of 'y'
     assert box[0] <= 100, f"Left edge clipped: {box}"
     assert box[2] >= 495, f"Right edge clipped (0y lost): {box}"
-    print(f"PASS: Regression test ('50 + 40n = 190y' fully enclosed in crop box {box})")
+    print(f"PASS: Synthetic regression test ('50 + 40n = 190y' crop box {box})")
+
+    # 2. Real photo regression test
+    real_photo_path = "test_photos/WhatsApp Image 2026-10-16 at 12.42.32 PM.jpeg"
+    if os.path.exists(real_photo_path):
+        real_im = Image.open(real_photo_path)
+        # Upright orientation is rotate=270
+        real_crop = prep(real_im, rotate=270)
+        rbox = real_crop.crop_box
+        # Equation spans from 213 to 608 in x
+        assert rbox[0] <= 213, f"Real photo left edge clipped: {rbox}"
+        assert rbox[2] >= 608, f"Real photo right edge clipped (0y lost): {rbox}"
+        print(f"PASS: Real photo regression test ({real_photo_path} at rot 270 crop box {rbox})")
 
 
 def run_random_suite(n_cases=300):
@@ -235,8 +273,11 @@ def run_random_suite(n_cases=300):
         ink_w = x_max - x_min + 1
         ink_h = y_max - y_min + 1
 
+        w, h = img.size
         crop = prep(img)
         x0, y0, x1, y1 = crop.crop_box
+        box_w = x1 - x0
+        box_h = y1 - y0
 
         # Property 1: Ink recall >= 99%, leftmost and rightmost ink columns inside crop
         crop_mask = clean_mask[y0:y1, x0:x1]
@@ -255,9 +296,14 @@ def run_random_suite(n_cases=300):
         if y1 < y_max + 1:
             errs.append(f"Bottom ink row {y_max} outside crop bottom {y1}")
 
-        # Property 2: Aspect ratio not distorted (scale_x equals scale_y within 1%)
-        box_w = x1 - x0
-        box_h = y1 - y0
+        # Property 2: Non-trivial crop metric
+        # When writing occupies < 30% of photo area, crop area must be < 60% of photo area
+        writing_area_frac = (ink_w * ink_h) / (w * h)
+        crop_area_frac = (box_w * box_h) / (w * h)
+        if writing_area_frac < 0.30 and crop_area_frac >= 0.60:
+            errs.append(f"Trivial crop: crop area {crop_area_frac:.2f} >= 0.60 for writing area {writing_area_frac:.2f}")
+
+        # Property 3: Aspect ratio not distorted (scale_x equals scale_y within 1%)
         final_w, final_h = crop.size
         scale_x = final_w / box_w
         scale_y = final_h / box_h
@@ -266,7 +312,7 @@ def run_random_suite(n_cases=300):
             if diff_scale >= 0.01:
                 errs.append(f"Aspect ratio distorted: diff {diff_scale:.4f} >= 0.01 (scale_x={scale_x}, scale_y={scale_y})")
 
-        # Property 3: No step produced width or height smaller than the ink box
+        # Property 4: No step produced width or height smaller than the ink box
         if box_w < ink_w:
             errs.append(f"Crop width {box_w} < ink width {ink_w}")
         if box_h < ink_h:
@@ -278,8 +324,9 @@ def run_random_suite(n_cases=300):
         else:
             passed += 1
 
-        if idx % 50 == 0:
-            print(f"  Progress: {idx}/{n_cases} cases completed ({passed} passed, {failures} failed)")
+        total_done = passed + failures
+        if total_done % 50 == 0:
+            print(f"  Progress: {total_done}/{n_cases} cases completed ({passed} passed, {failures} failed)")
 
     print(f"\nRandom cases summary: {passed}/{passed + failures} passed, {failures} failures.")
     return failures

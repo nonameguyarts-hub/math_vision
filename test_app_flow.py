@@ -9,8 +9,8 @@ from steps import steps_for
 from ui_checks import review
 
 photos = [
-    ("WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg", "Photo 1", "Equation"),
-    ("WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg", "Photo 2", "Equation"),
+    ("test_photos/WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg", "Photo 1", "Equation"),
+    ("test_photos/WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg", "Photo 2", "Equation"),
 ]
 
 print(f"Running app verification with DEFAULT_MAX_SIDE = {DEFAULT_MAX_SIDE}...\n")

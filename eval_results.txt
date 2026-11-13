@@ -3,24 +3,30 @@ RESOLUTION SWEEP EVALUATION RESULTS
 ======================================================================
 max_side    Exact Match %   Equivalent %    Mean Sec/Photo  
 ----------------------------------------------------------------------
-512         100.0           100.0           5.93            
-640         0.0             0.0             6.74            
-768         0.0             0.0             6.68            
-1024        50.0            50.0            8.74            
+512         50.0            50.0            9.75            
+640         0.0             0.0             8.14            
+768         0.0             0.0             9.53            
+1024        50.0            50.0            14.18           
 ----------------------------------------------------------------------
 
 WRONG PREDICTIONS (with character-level difference patterns):
+  [max_side=512] WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg:
+     Ground Truth : 5x+50=160
+     Prediction   : 5 m + 50 = 160
+     Char Diff    : 5[x -> m]+50=160
+     Patterns     : 'x' read as 'm'
+
   [max_side=640] WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg:
      Ground Truth : 2x+3y=74
-     Prediction   : 2 m + 3 y = 74
-     Char Diff    : 2[x -> m]+3y=74
-     Patterns     : 'x' read as 'm'
+     Prediction   : 2 n + 3 y = 74
+     Char Diff    : 2[x -> n]+3y=74
+     Patterns     : 'x' read as 'n'
 
   [max_side=640] WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg:
      Ground Truth : 5x+50=160
-     Prediction   : 500 + 50 = 160
-     Char Diff    : 5[x -> 00]+50=160
-     Patterns     : 'x' read as '00'
+     Prediction   : 5 m + 50 = 160
+     Char Diff    : 5[x -> m]+50=160
+     Patterns     : 'x' read as 'm'
 
   [max_side=768] WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg:
      Ground Truth : 2x+3y=74

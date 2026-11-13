@@ -17,12 +17,12 @@ from recognizer import _load, prep, normalize, PROMPT
 PHOTOS = [
     {
         "name": "photo1 (2.14.59 PM)",
-        "path": "WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg",
+        "path": "test_photos/WhatsApp Image 2026-10-15 at 2.14.59 PM.jpeg",
         "expected": "2x+3y=74"
     },
     {
         "name": "photo2 (2.16.35 PM)",
-        "path": "WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg",
+        "path": "test_photos/WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg",
         "expected": "5x+50=170 (or 160)"
     }
 ]
