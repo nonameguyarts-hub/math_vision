@@ -1,5 +1,19 @@
+# Virtual environment & Python cache
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Model cache & backups
 .hf_cache/
+ui_app_backup*.zip
+
+# Generated debug & diagnostic outputs
 debug_crops/
+debug_diagnostics/
+prep_check/
+debug_*.png
+crop_*.png
+*_side_by_side.png
+failing_*.png
