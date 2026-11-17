@@ -16,6 +16,10 @@ cases = [
     # Auto mode cases (no letters -> Arithmetic, letters present -> Equation)
     ("2 x + 3 = 7", "Auto", True, False, False),
     ("1 + 2", "Auto", True, False, False),
+    ("3 x 4", "Auto", True, False, False),
+    (r"3 \times 4", "Auto", True, False, False),
+    ("4 5 + l 7", "Auto", True, True, True),
+    ("2 x + 3", "Auto", True, True, True),
     ("205 = x ^ 4 + 9 x ^ 3 + 13 x ^ 2 - x", "Auto", True, False, False),
     ("205 = x ^ 4 + 9 x ^ 3 + 13 x ^ 2 - x", "Equation", True, False, False),
     ("2 ^ { 7 0 }", "Auto", True, True, True),                      # huge result in Auto mode
@@ -59,7 +63,24 @@ for s, exp in radical_cases:
         bad += 1
         print("FAIL has_nested_radicals |", repr(s), "got", has_nested_radicals(s), "expected", exp)
 
-print(f"UI check tests: {len(cases) + 1 + len(detect_cases) + len(radical_cases) - bad}/{len(cases) + 1 + len(detect_cases) + len(radical_cases)} passed")
+# Check specific warning messages and suggestions
+r_lookalike = review("4 5 + l 7", "Auto")
+if not any("Did you mean: 45 + 17?" in w for w in r_lookalike["warnings"]):
+    bad += 1
+    print("FAIL lookalike suggestion | got", r_lookalike["warnings"])
+
+r_no_rel = review("2 x + 3", "Auto")
+if not any("This has letters but no equals sign" in w for w in r_no_rel["warnings"]):
+    bad += 1
+    print("FAIL letters no rel warning | got", r_no_rel["warnings"])
+if any("Equation mode expects one equals sign" in w for w in r_no_rel["warnings"]):
+    bad += 1
+    print("FAIL unexpected generic warning | got", r_no_rel["warnings"])
+if any("Did you mean" in w for w in r_no_rel["warnings"]):
+    bad += 1
+    print("FAIL unexpected suggestion for 2 x + 3 | got", r_no_rel["warnings"])
+
+print(f"UI check tests: {len(cases) + 1 + len(detect_cases) + len(radical_cases) + 2 - bad}/{len(cases) + 1 + len(detect_cases) + len(radical_cases) + 2} passed")
 from ui_checks import friendly
 for err, must in [("unsupported token _", "Subscripts"), ("unbalanced braces", "brackets"), ("empty", "Nothing to solve")]:
     if must.lower() not in friendly(err).lower():

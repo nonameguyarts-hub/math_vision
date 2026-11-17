@@ -47,6 +47,41 @@ def has_nested_radicals(latex: str) -> bool:
     return False
 
 
+LOOKALIKE_DIGITS = {
+    "l": "1", "I": "1",
+    "O": "0", "o": "0",
+    "S": "5", "s": "5",
+    "Z": "2", "z": "2",
+    "B": "8",
+    "g": "9",
+}
+
+
+def suggest_numeric(latex: str) -> str | None:
+    """If replacing lookalike letters turns latex into a pure numeric expression, return it."""
+    def repl(m):
+        tok = m.group(0)
+        if tok.startswith("\\"):
+            return tok
+        return LOOKALIKE_DIGITS.get(tok, tok)
+
+    candidate = re.sub(r"\\[a-zA-Z]+|.", repl, latex)
+    if candidate == latex:
+        return None
+
+    norm = normalize_latex(candidate)
+    cleaned = re.sub(r"\\[a-zA-Z]+", "", norm)
+    cleaned = re.sub(r"(?<=\d)\s*[xX]\s*(?=\d)", " * ", cleaned)
+    if bool(re.search(r"[a-zA-Z]", cleaned)):
+        return None
+
+    formatted = re.sub(r"(?<=\d)\s+(?=\d)", "", candidate).strip()
+    r = solve_latex(formatted)
+    if r["ok"] and r["kind"] in ("value", "check"):
+        return formatted
+    return None
+
+
 def friendly(error: str) -> str:
     """Plain-language version of a solver error."""
     e = str(error or "")
@@ -85,12 +120,29 @@ def review(latex: str, mode: str = "Auto") -> dict:
         out["needs_confirm"] = True
     if not r["ok"]:
         return out
-    if mode == "Arithmetic" and r["kind"] in ("simplify", "solve", "identity"):
+
+    # Resolve "Auto" mode to a concrete mode before mode-specific checks
+    eff_mode = detect_mode(latex) if mode == "Auto" else mode
+
+    has_relation = bool(ops)
+    text_has_letters = (detect_mode(latex) == "Equation")
+
+    if eff_mode == "Equation":
+        if text_has_letters and not has_relation:
+            warn = "This has letters but no equals sign. If it should be plain arithmetic, a digit may have been misread as a letter. Check against your photo."
+            sug = suggest_numeric(latex)
+            if sug:
+                warn += f" Did you mean: {sug}?"
+            out["warnings"].append(warn)
+            out["needs_confirm"] = True
+        elif r["kind"] not in ("solve", "identity"):
+            out["warnings"].append("Equation mode expects one equals sign and one unknown, such as 2x + 3 = 7.")
+
+    if eff_mode == "Arithmetic" and r["kind"] in ("simplify", "solve", "identity"):
         out["warnings"].append(
             "A letter was read where a number may be expected. Check the symbols against your photo.")
         out["needs_confirm"] = True
-    if mode == "Equation" and r["kind"] not in ("solve", "identity"):
-        out["warnings"].append("Equation mode expects one equals sign and one unknown, such as 2x + 3 = 7.")
+
     if r["kind"] == "check" and r["result"] == "False":
         out["warnings"].append(
             "The statement is false. The equation or numbers may have been misread from your photo.")
