@@ -255,6 +255,56 @@ def prep(img: Image.Image, rotate: int = 0, margin: float = 0.12, max_side: int 
         if not expanded:
             break
 
+    # Final guard: check whether any strong-ink component was left outside the crop box
+    is_vertical = (ink_h > 1.3 * ink_w)
+    max_reach = max(120, int(med_h * 4.5))
+    cut_off_warning = False
+
+    omitted = []
+    for i in plausible_cands:
+        if stats[i, cv2.CC_STAT_AREA] < 15:
+            continue
+        cx_i = stats[i, cv2.CC_STAT_LEFT]
+        cy_i = stats[i, cv2.CC_STAT_TOP]
+        cw_i = stats[i, cv2.CC_STAT_WIDTH]
+        ch_i = stats[i, cv2.CC_STAT_HEIGHT]
+        cent_y = cy_i + ch_i / 2.0
+        cent_x = cx_i + cw_i / 2.0
+
+        is_outside = (cx_i < crop_x0 or cx_i + cw_i > crop_x1 or cy_i < crop_y0 or cy_i + ch_i > crop_y1)
+        if not is_outside:
+            continue
+
+        if not is_vertical:
+            in_h_band = (min_y - pad <= cent_y <= max_y + pad)
+            dx_to_orig = max(0, max(min_x - (cx_i + cw_i), cx_i - max_x))
+            if in_h_band and dx_to_orig <= max_reach:
+                omitted.append(i)
+        else:
+            in_v_band = (min_x - pad <= cent_x <= max_x + pad)
+            dy_to_orig = max(0, max(min_y - (cy_i + ch_i), cy_i - max_y))
+            if in_v_band and dy_to_orig <= max_reach:
+                omitted.append(i)
+
+    for i in omitted:
+        cx_i = stats[i, cv2.CC_STAT_LEFT]
+        cy_i = stats[i, cv2.CC_STAT_TOP]
+        cw_i = stats[i, cv2.CC_STAT_WIDTH]
+        ch_i = stats[i, cv2.CC_STAT_HEIGHT]
+
+        new_x0 = max(0, min(crop_x0, cx_i - pad))
+        new_y0 = max(0, min(crop_y0, cy_i - pad))
+        new_x1 = min(w, max(crop_x1, cx_i + cw_i + pad))
+        new_y1 = min(h, max(crop_y1, cy_i + ch_i + pad))
+
+        if touches.get(i, False) or (cx_i <= 1 or cy_i <= 1 or cx_i + cw_i >= w - 1 or cy_i + ch_i >= h - 1):
+            cut_off_warning = True
+        elif (new_x0 == 0 and cx_i - pad < 0) or (new_y0 == 0 and cy_i - pad < 0) or \
+             (new_x1 == w and cx_i + cw_i + pad > w) or (new_y1 == h and cy_i + ch_i + pad > h):
+            cut_off_warning = True
+
+        crop_x0, crop_y0, crop_x1, crop_y1 = new_x0, new_y0, new_x1, new_y1
+
     # If final box still covers > 85% of frame width AND height, treat detection as failed
     box_w = crop_x1 - crop_x0
     box_h = crop_y1 - crop_y0
@@ -264,6 +314,8 @@ def prep(img: Image.Image, rotate: int = 0, margin: float = 0.12, max_side: int 
     if failed_isolation:
         warning = "Couldn't isolate the handwriting. Retake on plain paper with some space around it."
         crop_x0, crop_y0, crop_x1, crop_y1 = 0, 0, w, h
+    elif cut_off_warning:
+        warning = "Part of the writing may be cut off. Retake the photo with some space around it."
     elif writing_touches_border:
         warning = "Writing touches the edge of the photo."
 
