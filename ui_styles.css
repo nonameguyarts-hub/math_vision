@@ -1,0 +1,438 @@
+/* MathVision UI Stylesheet - University Project Redesign */
+
+/* 1. Global Reset & Streamlit Chrome Hiding */
+[data-testid="stSidebar"], 
+[data-testid="stSidebarCollapsedControl"],
+#MainMenu, 
+header[data-testid="stHeader"], 
+footer, 
+.stDeployButton {
+    display: none !important;
+}
+
+/* Ensure the main block container has proper spacing and max-width */
+.block-container {
+    max-width: 1100px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}
+
+/* 2. System Typography Stack */
+html, body, [class*="css"], .stMarkdown, p, div, span, label {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    color: #1B2430;
+    line-height: 1.55;
+}
+
+h1, .mv-title {
+    color: #1F3A5F !important;
+    font-size: 2.1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem !important;
+}
+
+.mv-tagline {
+    color: #4B5563 !important;
+    font-size: 1.05rem !important;
+    font-weight: 400 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+h2, h3, .mv-section-header {
+    color: #1F3A5F !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em;
+}
+
+/* 3. Cards & Containers (8px grid, soft shadow, rounded) */
+.mv-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E6EF;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(31, 58, 95, 0.04);
+    transition: box-shadow 0.2s ease;
+}
+
+.mv-card:hover {
+    box-shadow: 0 4px 12px rgba(31, 58, 95, 0.08);
+}
+
+.mv-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #F0F3F8;
+    padding-bottom: 12px;
+}
+
+.mv-card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #1F3A5F;
+    margin: 0;
+}
+
+/* 4. Three-Step Stepper Component */
+.mv-stepper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1px solid #E2E6EF;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 6px rgba(31, 58, 95, 0.03);
+}
+
+.mv-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    position: relative;
+}
+
+.mv-step:not(:last-child)::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: #E2E6EF;
+    margin: 0 16px;
+}
+
+.mv-step.active:not(:last-child)::after {
+    background: #1F3A5F;
+}
+
+.mv-step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    background: #F0F3F8;
+    color: #4B5563;
+    border: 2px solid transparent;
+}
+
+.mv-step.active .mv-step-num {
+    background: #1F3A5F;
+    color: #FFFFFF;
+}
+
+.mv-step.completed .mv-step-num {
+    background: #E0A030;
+    color: #1B2430;
+}
+
+.mv-step-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #4B5563;
+}
+
+.mv-step.active .mv-step-label {
+    color: #1F3A5F;
+    font-weight: 700;
+}
+
+.mv-step.completed .mv-step-label {
+    color: #1B2430;
+}
+
+/* 5. Custom Button Styling */
+button[kind="primary"] {
+    background-color: #E0A030 !important;
+    color: #1B2430 !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 1.2rem !important;
+    box-shadow: 0 2px 4px rgba(224, 160, 48, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+
+button[kind="primary"]:hover {
+    background-color: #C88E26 !important;
+    box-shadow: 0 4px 8px rgba(224, 160, 48, 0.35) !important;
+}
+
+button[kind="secondary"] {
+    background-color: #FFFFFF !important;
+    color: #1F3A5F !important;
+    border: 1.5px solid #1F3A5F !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+button[kind="secondary"]:hover {
+    background-color: #EEF4FB !important;
+}
+
+/* 6. Focus Rings for Accessibility */
+button:focus-visible, 
+input:focus-visible, 
+textarea:focus-visible, 
+[tabindex]:focus-visible {
+    outline: 2px solid #1F3A5F !important;
+    outline-offset: 2px !important;
+}
+
+/* 7. Callout Boxes */
+.mv-callout {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.mv-callout-warning {
+    background-color: #FFF8E7;
+    border-left: 4px solid #E0A030;
+    color: #1B2430;
+}
+
+.mv-callout-error {
+    background-color: #FDF2F2;
+    border-left: 4px solid #D93838;
+    color: #7A1B1B;
+}
+
+.mv-callout-info {
+    background-color: #EEF4FB;
+    border-left: 4px solid #1F3A5F;
+    color: #1B2430;
+}
+
+.mv-callout-icon {
+    font-weight: bold;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* 8. Skeleton Shimmer Placeholder */
+.mv-skeleton {
+    width: 100%;
+    min-height: 160px;
+    background: linear-gradient(90deg, #EDF1F7 25%, #E2E8F0 50%, #EDF1F7 75%);
+    background-size: 200% 100%;
+    animation: mv-shimmer 1.5s infinite;
+    border-radius: 10px;
+    margin: 16px 0;
+    border: 1px solid #E2E6EF;
+}
+
+@keyframes mv-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* 9. Answer Display Card */
+.mv-answer-box {
+    background: #FFFFFF;
+    border: 1px solid #E2E6EF;
+    border-left: 5px solid #E0A030;
+    border-radius: 10px;
+    padding: 24px;
+    margin: 16px 0;
+    box-shadow: 0 4px 12px rgba(31, 58, 95, 0.05);
+}
+
+.mv-answer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.mv-answer-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #1F3A5F;
+}
+
+.mv-chips-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mv-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #EEF4FB;
+    color: #1F3A5F;
+    border: 1px solid #D4E2F2;
+}
+
+.mv-chip-accent {
+    background: #FFF8E7;
+    color: #8C5B00;
+    border: 1px solid #F5D59A;
+}
+
+/* 10. Vertical Step Timeline */
+.mv-timeline {
+    position: relative;
+    padding-left: 28px;
+    margin: 20px 0;
+}
+
+.mv-timeline::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: #E2E6EF;
+}
+
+.mv-timeline-item {
+    position: relative;
+    margin-bottom: 18px;
+}
+
+.mv-timeline-badge {
+    position: absolute;
+    left: -28px;
+    top: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #1F3A5F;
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.mv-timeline-content {
+    background: #F9FAFC;
+    border: 1px solid #E5E9F0;
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.mv-timeline-why {
+    font-size: 0.88rem;
+    color: #4B5563;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* 11. Photo Frame Preview */
+.mv-photo-frame {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #E2E6EF;
+    max-height: 380px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #F9FAFC;
+}
+
+.mv-photo-frame img {
+    max-height: 380px;
+    object-fit: contain;
+    width: 100%;
+}
+
+/* 12. Friendly Tips Card (Empty State) */
+.mv-tips-card {
+    background: #F8FAFC;
+    border: 1px dashed #CBD5E1;
+    border-radius: 10px;
+    padding: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.mv-tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 0.92rem;
+    color: #334155;
+}
+
+.mv-tip-bullet {
+    color: #E0A030;
+    font-weight: bold;
+    font-size: 1.1rem;
+    line-height: 1.2;
+}
+
+/* 13. LaTeX Insert Helper Buttons */
+.mv-quick-keys {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    margin-bottom: 14px;
+}
+
+.mv-quick-key {
+    background: #FFFFFF;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 0.85rem;
+    font-family: monospace;
+    cursor: pointer;
+    color: #1F3A5F;
+    transition: all 0.15s ease;
+}
+
+.mv-quick-key:hover {
+    background: #EEF4FB;
+    border-color: #1F3A5F;
+}
+
+/* 14. Responsive Layout */
+@media (max-width: 768px) {
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    .mv-stepper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .mv-step:not(:last-child)::after {
+        display: none;
+    }
+    .mv-card {
+        padding: 16px;
+    }
+}
