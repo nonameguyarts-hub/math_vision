@@ -143,3 +143,60 @@ def render_footer():
         <p style="font-size: 0.8rem; color: #94A3B8; margin: 0;">{imprint}</p>
     </div>
     """, unsafe_allow_html=True)
+
+
+def render_svg_pipeline():
+    """Render inline SVG flowchart showing the MathVision 6-stage architecture."""
+    st.markdown("""
+    <div style="width: 100%; overflow-x: auto; margin: 20px 0; text-align: center;">
+        <svg viewBox="0 0 920 90" width="100%" height="90" style="max-width: 920px; font-family: -apple-system, sans-serif;">
+            <defs>
+                <linearGradient id="gradNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#1F3A5F" />
+                    <stop offset="100%" stop-color="#2D5284" />
+                </linearGradient>
+                <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#E0A030" />
+                    <stop offset="100%" stop-color="#F2BA52" />
+                </linearGradient>
+                <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#8F9CAE" />
+                </marker>
+            </defs>
+            <!-- Stage 1 -->
+            <rect x="5" y="15" width="125" height="58" rx="8" fill="url(#gradNavy)" />
+            <text x="67" y="42" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">1. Photo Input</text>
+            <text x="67" y="58" fill="#CBD5E1" font-size="9.5" text-anchor="middle">Camera / Upload</text>
+            <line x1="130" y1="44" x2="155" y2="44" stroke="#8F9CAE" stroke-width="2" marker-end="url(#arrow)" />
+
+            <!-- Stage 2 -->
+            <rect x="158" y="15" width="125" height="58" rx="8" fill="url(#gradNavy)" />
+            <text x="220" y="42" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">2. Crop & Clean</text>
+            <text x="220" y="58" fill="#CBD5E1" font-size="9.5" text-anchor="middle">Ink Isolation</text>
+            <line x1="283" y1="44" x2="308" y2="44" stroke="#8F9CAE" stroke-width="2" marker-end="url(#arrow)" />
+
+            <!-- Stage 3 -->
+            <rect x="311" y="15" width="128" height="58" rx="8" fill="url(#gradNavy)" />
+            <text x="375" y="42" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">3. Recognition</text>
+            <text x="375" y="58" fill="#CBD5E1" font-size="9.5" text-anchor="middle">Uni-MuMER (Qwen3)</text>
+            <line x1="439" y1="44" x2="464" y2="44" stroke="#8F9CAE" stroke-width="2" marker-end="url(#arrow)" />
+
+            <!-- Stage 4 -->
+            <rect x="467" y="15" width="125" height="58" rx="8" fill="url(#gradNavy)" />
+            <text x="529" y="42" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">4. Editable LaTeX</text>
+            <text x="529" y="58" fill="#CBD5E1" font-size="9.5" text-anchor="middle">Review Guardrails</text>
+            <line x1="592" y1="44" x2="617" y2="44" stroke="#8F9CAE" stroke-width="2" marker-end="url(#arrow)" />
+
+            <!-- Stage 5 -->
+            <rect x="620" y="15" width="125" height="58" rx="8" fill="url(#gradNavy)" />
+            <text x="682" y="42" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">5. SymPy Solver</text>
+            <text x="682" y="58" fill="#CBD5E1" font-size="9.5" text-anchor="middle">AST Verification</text>
+            <line x1="745" y1="44" x2="770" y2="44" stroke="#8F9CAE" stroke-width="2" marker-end="url(#arrow)" />
+
+            <!-- Stage 6 -->
+            <rect x="773" y="15" width="138" height="58" rx="8" fill="url(#gradGold)" />
+            <text x="842" y="42" fill="#1B2430" font-size="12" font-weight="700" text-anchor="middle">6. Answer & Steps</text>
+            <text x="842" y="58" fill="#3E2B08" font-size="9.5" text-anchor="middle">Rendered Working</text>
+        </svg>
+    </div>
+    """, unsafe_allow_html=True)
