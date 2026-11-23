@@ -208,6 +208,14 @@ button[kind="primary"]:hover {
     box-shadow: 0 4px 8px rgba(224, 160, 48, 0.35) !important;
 }
 
+button[kind="primary"]:disabled {
+    background-color: #E2E8F0 !important;
+    color: #94A3B8 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
 button[kind="secondary"] {
     background-color: #FFFFFF !important;
     color: #1F3A5F !important;

@@ -174,30 +174,30 @@ with tab_solve:
         # LaTeX Editing Aid (Insert Buttons)
         html('<div style="font-size: 0.88rem; font-weight: 600; color: #1F3A5F; margin-top: 10px; margin-bottom: 4px;">Insert math symbol:</div>')
         symbols = [
-            (r"\frac{a}{b}", "frac"),
-            (r"\sqrt{x}", "sqrt"),
-            (r"x^2", "pow"),
-            (r"x_i", "sub"),
-            (r"\pi", "pi"),
-            (r"\pm", "pm"),
-            (r"\le", "le"),
-            (r"\ge", "ge"),
-            (r"\infty", "inf"),
-            (r"\int", "int"),
-            (r"\sum", "sum"),
-            (r"\lim", "lim")
+            (r"\frac{a}{b}", "a/b", "frac"),
+            (r"\sqrt{x}", "√x", "sqrt"),
+            (r"x^2", "x²", "pow"),
+            (r"x_i", "xᵢ", "sub"),
+            (r"\pi", "π", "pi"),
+            (r"\pm", "±", "pm"),
+            (r"\le", "≤", "le"),
+            (r"\ge", "≥", "ge"),
+            (r"\infty", "∞", "inf"),
+            (r"\int", "∫", "int"),
+            (r"\sum", "∑", "sum"),
+            (r"\lim", "lim", "lim")
         ]
         cols_r1 = st.columns(6)
-        for idx, (sym_code, label) in enumerate(symbols[:6]):
-            if cols_r1[idx].button(sym_code, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
+        for idx, (sym_code, sym_display, label) in enumerate(symbols[:6]):
+            if cols_r1[idx].button(sym_display, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
                 current_val = st.session_state.get("latex", "")
                 separator = " " if current_val and not current_val.endswith(" ") else ""
                 st.session_state["latex"] = current_val + separator + sym_code
                 st.rerun()
 
         cols_r2 = st.columns(6)
-        for idx, (sym_code, label) in enumerate(symbols[6:]):
-            if cols_r2[idx].button(sym_code, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
+        for idx, (sym_code, sym_display, label) in enumerate(symbols[6:]):
+            if cols_r2[idx].button(sym_display, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
                 current_val = st.session_state.get("latex", "")
                 separator = " " if current_val and not current_val.endswith(" ") else ""
                 st.session_state["latex"] = current_val + separator + sym_code
@@ -229,7 +229,8 @@ with tab_solve:
         if rev["needs_confirm"]:
             confirmed = st.checkbox("The symbols match my photo")
 
-        if st.button("Solve", type="primary", use_container_width=True):
+        solve_disabled = not bool(latex.strip())
+        if st.button("Solve", type="primary", disabled=solve_disabled, use_container_width=True):
             st.session_state["solved_for"] = (latex, mode_override)
 
     # --------------------------------------------------------------------------
