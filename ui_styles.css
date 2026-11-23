@@ -436,3 +436,22 @@ textarea:focus-visible,
         padding: 16px;
     }
 }
+
+@media (max-width: 480px) {
+    .block-container {
+        padding-left: 0.6rem !important;
+        padding-right: 0.6rem !important;
+    }
+    .mv-card {
+        padding: 12px !important;
+    }
+    .mv-stepper {
+        padding: 10px 12px !important;
+    }
+    .mv-step-label {
+        font-size: 0.85rem !important;
+    }
+    .mv-answer-box {
+        padding: 16px !important;
+    }
+}

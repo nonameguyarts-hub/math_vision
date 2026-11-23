@@ -89,17 +89,25 @@ with tab_solve:
     # Check if an example was selected from Examples tab
     active_image = None
     if file is not None:
-        raw_img = ImageOps.exif_transpose(Image.open(file)).convert("RGB")
-        rot_angle = {"None": 0, "Left 90°": 90, "Right 90°": 270, "180°": 180}[turn]
-        active_image = raw_img.rotate(rot_angle, expand=True)
-        st.session_state["uploaded_image"] = active_image
-    elif "example_image_path" in st.session_state and st.session_state["example_image_path"]:
-        ex_path = st.session_state["example_image_path"]
-        if os.path.exists(ex_path):
-            raw_img = ImageOps.exif_transpose(Image.open(ex_path)).convert("RGB")
+        try:
+            raw_img = ImageOps.exif_transpose(Image.open(file)).convert("RGB")
             rot_angle = {"None": 0, "Left 90°": 90, "Right 90°": 270, "180°": 180}[turn]
             active_image = raw_img.rotate(rot_angle, expand=True)
             st.session_state["uploaded_image"] = active_image
+        except Exception:
+            render_callout("Couldn't open this image file. Please upload a valid PNG, JPG, or JPEG photo.", kind="error")
+            active_image = None
+    elif "example_image_path" in st.session_state and st.session_state["example_image_path"]:
+        ex_path = st.session_state["example_image_path"]
+        if os.path.exists(ex_path):
+            try:
+                raw_img = ImageOps.exif_transpose(Image.open(ex_path)).convert("RGB")
+                rot_angle = {"None": 0, "Left 90°": 90, "Right 90°": 270, "180°": 180}[turn]
+                active_image = raw_img.rotate(rot_angle, expand=True)
+                st.session_state["uploaded_image"] = active_image
+            except Exception:
+                render_callout("Couldn't open example image file.", kind="error")
+                active_image = None
 
     with col2:
         if active_image is not None:
@@ -165,7 +173,6 @@ with tab_solve:
 
     # LaTeX Editing Aid (Insert Buttons)
     st.markdown('<div style="font-size: 0.88rem; font-weight: 600; color: #1F3A5F; margin-top: 10px; margin-bottom: 4px;">Insert math symbol:</div>', unsafe_allow_html=True)
-    insert_cols = st.columns(12)
     symbols = [
         (r"\frac{a}{b}", "frac"),
         (r"\sqrt{x}", "sqrt"),
@@ -180,8 +187,17 @@ with tab_solve:
         (r"\sum", "sum"),
         (r"\lim", "lim")
     ]
-    for idx, (sym_code, label) in enumerate(symbols):
-        if insert_cols[idx].button(sym_code, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
+    cols_r1 = st.columns(6)
+    for idx, (sym_code, label) in enumerate(symbols[:6]):
+        if cols_r1[idx].button(sym_code, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
+            current_val = st.session_state.get("latex", "")
+            separator = " " if current_val and not current_val.endswith(" ") else ""
+            st.session_state["latex"] = current_val + separator + sym_code
+            st.rerun()
+
+    cols_r2 = st.columns(6)
+    for idx, (sym_code, label) in enumerate(symbols[6:]):
+        if cols_r2[idx].button(sym_code, key=f"btn_sym_{label}", help=f"Insert {sym_code}"):
             current_val = st.session_state.get("latex", "")
             separator = " " if current_val and not current_val.endswith(" ") else ""
             st.session_state["latex"] = current_val + separator + sym_code
