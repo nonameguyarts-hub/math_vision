@@ -67,25 +67,38 @@ with st.container(border=True, key="card_step1"):
         file = st.file_uploader("Your photo", type=["png", "jpg", "jpeg"], help="Upload an image containing handwritten math")
         turn = st.radio(
             "Rotate photo",
-            ["None", "Left 90°", "Right 90°", "180°"],
+            ["Auto", "None", "Left 90°", "Right 90°", "180°"],
+            index=0,
             horizontal=True,
             help="Use this if the writing is sideways or upside down."
         )
 
     active_image = None
+    auto_rotated = False
     if file is not None:
         try:
             raw_img = ImageOps.exif_transpose(Image.open(file)).convert("RGB")
-            rot_angle = {"None": 0, "Left 90°": 90, "Right 90°": 270, "180°": 180}[turn]
+            if turn == "Auto":
+                if looks_sideways(raw_img):
+                    rot_angle = 90
+                    auto_rotated = True
+                else:
+                    rot_angle = 0
+            else:
+                rot_angle = {"None": 0, "Left 90°": 90, "Right 90°": 270, "180°": 180}[turn]
+
             active_image = raw_img.rotate(rot_angle, expand=True)
             st.session_state["uploaded_image"] = active_image
+            st.session_state["rot_angle"] = rot_angle
         except Exception:
             render_callout("Couldn't open this image file. Please upload a valid PNG, JPG, or JPEG photo.", kind="error")
             active_image = None
 
     with col2:
         if active_image is not None:
-            if looks_sideways(active_image):
+            if auto_rotated:
+                render_callout("Rotated automatically. If the writing looks upside down, choose another rotation above.", kind="info")
+            elif turn != "Auto" and looks_sideways(active_image):
                 render_callout("The writing looks sideways. Try Left 90° or Right 90° above.", kind="info")
             html('<div class="mv-photo-frame">')
             st.image(active_image, caption="Uploaded photo", use_container_width=True)
@@ -112,13 +125,12 @@ with st.container(border=True, key="card_step2"):
                     raw_latex = os.environ.get("MATHVISION_STUB_LATEX", "5 x + 50 = 160")
                     crop_img = active_image
                 else:
-                    rot_angle = {"None": 0, "Left 90°": 90, "Right 90°": 270, "180°": 180}[turn]
                     if BACKEND == "legacy":
-                        raw_latex = recognizer_old.recognize(active_image, rotate=rot_angle)
+                        raw_latex = recognizer_old.recognize(active_image, rotate=0)
                         crop_img = active_image
                     else:
-                        crop_img = prep(active_image, rotate=rot_angle, max_side=DEFAULT_MAX_SIDE)
-                        raw_latex = recognize(active_image, rotate=rot_angle, crop=crop_img)
+                        crop_img = prep(active_image, rotate=0, max_side=DEFAULT_MAX_SIDE)
+                        raw_latex = recognize(active_image, rotate=0, crop=crop_img)
 
             placeholder.empty()
 

@@ -123,10 +123,39 @@ def _ink_bbox(g: np.ndarray, thr: float = THR_PHOTO):
 def looks_sideways(image) -> bool:
     """True when the handwriting is clearly taller than wide, i.e. the photo needs rotating."""
     try:
-        (y0, y1, x0, x1), _, _ = _ink_bbox(to_gray(image))
+        (y0, y1, x0, x1), scale, (sh, sw) = _ink_bbox(to_gray(image))
+        ink_h = y1 - y0
+        ink_w = x1 - x0
     except ValueError:
         return False
-    return (y1 - y0) > 1.5 * (x1 - x0)
+
+    if ink_h <= 1.35 * ink_w:
+        return False
+
+    # Fraction guard: if a component with width >= 60% of the crop width and aspect > 3
+    # exists with ink both above and below it, treat the crop as an upright fraction and do not rotate.
+    try:
+        g = to_gray(image)
+        scale_val = min(1.0, 800 / max(g.shape))
+        small = cv2.resize(g, (max(1, round(g.shape[1] * scale_val)), max(1, round(g.shape[0] * scale_val))), interpolation=cv2.INTER_AREA) if scale_val < 1 else g
+        ink = _ink(small, small.shape[0], max(15, int(small.shape[0] * small.shape[1] * 2e-5)), THR_PHOTO)
+        crop_ink = ink[y0:y1, x0:x1]
+        crop_w = max(1, ink_w)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(crop_ink, connectivity=8)
+        for i in range(1, n):
+            cw = st[i, cv2.CC_STAT_WIDTH]
+            ch = st[i, cv2.CC_STAT_HEIGHT]
+            cy = st[i, cv2.CC_STAT_TOP]
+            aspect = cw / max(ch, 1)
+            if cw >= 0.60 * crop_w and aspect > 3.0:
+                ink_above = np.count_nonzero(crop_ink[:cy, :])
+                ink_below = np.count_nonzero(crop_ink[cy + ch:, :])
+                if ink_above >= 10 and ink_below >= 10:
+                    return False
+    except Exception:
+        pass
+
+    return True
 
 
 def crop_to_ink(g: np.ndarray, margin: float = 0.12, thr: float = THR_PHOTO) -> np.ndarray:
