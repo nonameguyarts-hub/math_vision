@@ -38,14 +38,11 @@ def html(s: str):
     """
     Render raw HTML safely by stripping leading whitespace from every line,
     filtering out empty lines (preventing CommonMark 4-space indented code blocks),
-    and rendering via st.html (or st.markdown fallback).
+    and rendering via st.markdown with unsafe_allow_html=True.
     """
     cleaned_lines = [line.lstrip() for line in s.strip().splitlines() if line.strip()]
     cleaned = "\n".join(cleaned_lines)
-    if hasattr(st, "html"):
-        st.html(cleaned)
-    else:
-        st.markdown(cleaned, unsafe_allow_html=True)
+    st.markdown(cleaned, unsafe_allow_html=True)
 
 
 def render_header():
