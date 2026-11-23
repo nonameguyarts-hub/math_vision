@@ -20,10 +20,35 @@ footer,
 }
 
 /* 2. System Typography Stack */
-html, body, [class*="css"], .stMarkdown, p, div, span, label {
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+html, body, p, label {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #1B2430;
     line-height: 1.55;
+}
+
+.stMarkdown, .stMarkdown p, .mv-title, .mv-tagline, .mv-section-header, .mv-card-title, .mv-step-label {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Explicitly protect icon elements and preserve Streamlit's Material Symbols font */
+[data-testid="stIconMaterial"],
+[data-testid*="Icon"],
+.material-symbols-rounded,
+.material-symbols-outlined,
+.material-icons,
+span:has(> [data-testid="stIconMaterial"]) {
+    font-family: "Material Symbols Rounded", "Material Icons" !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    line-height: 1 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    display: inline-block !important;
+    white-space: nowrap !important;
+    word-wrap: normal !important;
+    direction: ltr !important;
+    -webkit-font-smoothing: antialiased !important;
+    font-feature-settings: normal !important;
 }
 
 h1, .mv-title {
