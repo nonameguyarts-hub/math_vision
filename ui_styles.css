@@ -48,18 +48,34 @@ h2, h3, .mv-section-header {
 }
 
 /* 3. Cards & Containers (8px grid, soft shadow, rounded) */
+div[class*="st-key-card_"],
 .mv-card {
-    background: #FFFFFF;
-    border: 1px solid #E2E6EF;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(31, 58, 95, 0.04);
-    transition: box-shadow 0.2s ease;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E6EF !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    margin-bottom: 24px !important;
+    box-shadow: 0 2px 8px rgba(31, 58, 95, 0.04) !important;
+    transition: box-shadow 0.2s ease !important;
 }
 
+div[class*="st-key-card_"]:hover,
 .mv-card:hover {
-    box-shadow: 0 4px 12px rgba(31, 58, 95, 0.08);
+    box-shadow: 0 4px 12px rgba(31, 58, 95, 0.08) !important;
+}
+
+div[class*="st-key-card_answer"] {
+    border-left: 5px solid #E0A030 !important;
+    padding: 20px !important;
+    margin: 16px 0 !important;
+}
+
+div[class*="st-key-step_item_"] {
+    background: #F9FAFC !important;
+    border: 1px solid #E5E9F0 !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 12px !important;
 }
 
 .mv-card-header {
