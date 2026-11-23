@@ -18,10 +18,10 @@ LOGO_FILE = ""
 PALETTE = {
     "primary": "#1F3A5F",
     "accent": "#E0A030",
-    "background": "#FAF9F6",
-    "text": "#1B2430",
+    "background": "#F5F2EB",
+    "text": "#2D3748",
     "white": "#FFFFFF",
-    "border": "#E2E6EF"
+    "border": "#E6E1D8"
 }
 
 
