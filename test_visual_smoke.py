@@ -114,7 +114,22 @@ class TestVisualSmoke(unittest.TestCase):
             data = base64.b64decode(res["data"])
             with open(path, "wb") as f:
                 f.write(data)
+            if width != 1280:
+                await send("Emulation.setDeviceMetricsOverride", {
+                    "width": 1280, "height": 900, "deviceScaleFactor": 1, "mobile": False
+                })
+                await asyncio.sleep(0.2)
+
         async def click_element(expr):
+            for _ in range(25):
+                dis = await evaluate(f"""(() => {{
+                    const el = {expr};
+                    return el ? el.disabled : true;
+                }})()""")
+                if not dis:
+                    break
+                await asyncio.sleep(0.2)
+
             box = await evaluate(f"""(() => {{
                 const el = {expr};
                 if (!el) return null;
@@ -122,10 +137,13 @@ class TestVisualSmoke(unittest.TestCase):
                 const rect = el.getBoundingClientRect();
                 return {{x: rect.left + rect.width / 2, y: rect.top + rect.height / 2}};
             }})()""")
-            if not box:
-                return False
-            await send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 1})
-            await send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 1})
+            if box:
+                await send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 1})
+                await send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 1})
+            await evaluate(f"""(() => {{
+                const el = {expr};
+                if (el) el.click();
+            }})()""")
             return True
 
         async def type_latex(val):
@@ -138,18 +156,17 @@ class TestVisualSmoke(unittest.TestCase):
             })()""")
             if not box:
                 return False
-            await send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 1})
-            await send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 1})
-            await asyncio.sleep(0.2)
-            await send("Input.dispatchKeyEvent", {"type": "rawKeyDown", "windowsVirtualKeyCode": 65, "modifiers": 2})
-            await send("Input.dispatchKeyEvent", {"type": "keyUp", "windowsVirtualKeyCode": 65, "modifiers": 2})
-            await send("Input.dispatchKeyEvent", {"type": "rawKeyDown", "windowsVirtualKeyCode": 8})
-            await send("Input.dispatchKeyEvent", {"type": "keyUp", "windowsVirtualKeyCode": 8})
+            # Triple click to natively focus and select all text
+            await send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 3})
+            await send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": box["x"], "y": box["y"], "button": "left", "clickCount": 3})
+            await asyncio.sleep(0.1)
+            # Insert the new text over the selection
             await send("Input.insertText", {"text": val})
             await asyncio.sleep(0.2)
+            # Dispatch Enter key to commit value to Streamlit
             await send("Input.dispatchKeyEvent", {"type": "rawKeyDown", "windowsVirtualKeyCode": 13, "key": "Enter", "code": "Enter"})
             await send("Input.dispatchKeyEvent", {"type": "keyUp", "windowsVirtualKeyCode": 13, "key": "Enter", "code": "Enter"})
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(1.5)
             return True
 
         return ws, send, evaluate, capture_shot, click_element, type_latex
@@ -168,13 +185,18 @@ class TestVisualSmoke(unittest.TestCase):
                 
                 # Wait for app loaded
                 for _ in range(40):
-                    ready = await evaluate("document.querySelectorAll('[data-testid=\"stTab\"]').length > 0")
+                    ready = await evaluate("document.querySelectorAll('input[type=\"file\"]').length > 0")
                     if ready:
                         break
                     await asyncio.sleep(0.5)
                 await asyncio.sleep(1.5)
                 
                 failures = []
+                
+                # Verify no tabs exist
+                tab_count = await evaluate("document.querySelectorAll('[data-testid=\"stTab\"], [data-testid=\"stTabs\"], [role=\"tablist\"]').length")
+                if tab_count > 0:
+                    failures.append(f"[Layout] Expected 0 tab elements after simplification, found: {tab_count}")
                 
                 # Helper for text leaks check
                 async def check_text_leaks(state_name):
@@ -251,15 +273,15 @@ class TestVisualSmoke(unittest.TestCase):
                         failures.append(f"[{state_name}] Icon elements do not use icon font: {bad_icons}")
 
                 # -------------------------------------------------------------
-                # 1. Solve Tab: Empty State
+                # 1. Solve Page: Empty State
                 # -------------------------------------------------------------
                 await check_text_leaks("Solve Empty")
                 await check_icon_fonts("Solve Empty")
                 await check_card_containers("Solve Empty")
                 await check_overflow("Solve Empty", 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_empty_1280.png"), 1280)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_empty_1280.png"), 1280)
                 await check_overflow("Solve Empty", 420)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_empty_420.png"), 420)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_empty_420.png"), 420)
                 
                 # Check Solve button is disabled when LaTeX is empty
                 solve_disabled = await evaluate("""(() => {
@@ -277,45 +299,16 @@ class TestVisualSmoke(unittest.TestCase):
                 if palette_raw:
                     failures.append(f"[Solve Empty] Palette buttons show raw LaTeX: {palette_raw}")
 
-                # -------------------------------------------------------------
-                # 2. How it works Tab
-                # -------------------------------------------------------------
-                await click_element("Array.from(document.querySelectorAll('div[data-testid=\"stTab\"]')).find(t => t.textContent.trim().includes('How it works'))")
-                await asyncio.sleep(1.0)
-                await check_text_leaks("How it works")
-                await check_card_containers("How it works")
-                await check_overflow("How it works", 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_how_it_works_1280.png"), 1280)
-                await check_overflow("How it works", 420)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_how_it_works_420.png"), 420)
-
-                # -------------------------------------------------------------
-                # 3. Examples Tab
-                # -------------------------------------------------------------
-                await click_element("Array.from(document.querySelectorAll('div[data-testid=\"stTab\"]')).find(t => t.textContent.trim().includes('Examples'))")
-                await asyncio.sleep(1.0)
-                await check_text_leaks("Examples")
-                await check_card_containers("Examples")
-                await check_overflow("Examples", 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_examples_1280.png"), 1280)
-                await check_overflow("Examples", 420)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_examples_420.png"), 420)
-
-                # -------------------------------------------------------------
-                # 4. About Tab
-                # -------------------------------------------------------------
-                await click_element("Array.from(document.querySelectorAll('div[data-testid=\"stTab\"]')).find(t => t.textContent.trim().includes('About'))")
-                await asyncio.sleep(1.0)
-                await check_text_leaks("About")
-                await check_card_containers("About")
-                await check_overflow("About", 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_about_1280.png"), 1280)
-                await check_overflow("About", 420)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_about_420.png"), 420)
-
-                # Switch back to Solve tab
-                await click_element("Array.from(document.querySelectorAll('div[data-testid=\"stTab\"]')).find(t => t.textContent.trim().includes('Solve'))")
-                await asyncio.sleep(1.0)
+                # Check that full layout elements are present on the single-page Solve app
+                layout_ok = await evaluate("""(() => {
+                    const title = document.querySelector('.mv-title');
+                    const stepper = document.querySelector('.mv-stepper');
+                    const card1 = document.querySelector('div[class*=\"st-key-card_step1\"]');
+                    const card2 = document.querySelector('div[class*=\"st-key-card_step2\"]');
+                    return !!(title && stepper && card1 && card2);
+                })()""")
+                if not layout_ok:
+                    failures.append("[Layout] Essential layout components missing on Solve page")
 
                 # -------------------------------------------------------------
                 # 5. Photo Uploaded State
@@ -323,15 +316,15 @@ class TestVisualSmoke(unittest.TestCase):
                 doc = await send("DOM.getDocument")
                 root_id = doc["root"]["nodeId"]
                 inp_node = await send("DOM.querySelector", {"nodeId": root_id, "selector": 'input[type="file"]'})
-                test_photo = r"C:\Users\User\Downloads\ui_app\test_photos\WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg"
+                test_photo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_photos", "WhatsApp Image 2026-10-15 at 2.16.35 PM.jpeg")
                 await send("DOM.setFileInputFiles", {"files": [test_photo], "nodeId": inp_node["nodeId"]})
                 await asyncio.sleep(2.5)
 
                 await check_text_leaks("Photo Uploaded")
                 await check_overflow("Photo Uploaded", 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_photo_uploaded_1280.png"), 1280)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_photo_uploaded_1280.png"), 1280)
                 await check_overflow("Photo Uploaded", 420)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_photo_uploaded_420.png"), 420)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_photo_uploaded_420.png"), 420)
 
                 # -------------------------------------------------------------
                 # 6. Reading in Progress & Layout Height Stability (5s Stub)
@@ -349,8 +342,8 @@ class TestVisualSmoke(unittest.TestCase):
                     failures.append(f"[Reading In Progress] Expected exact spinner text 'Recognising equation in image...', got: '{sp_text}'")
 
                 h_during = await evaluate("document.documentElement.scrollHeight")
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_reading_1280.png"), 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_reading_420.png"), 420)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_reading_1280.png"), 1280)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_reading_420.png"), 420)
 
                 # Wait for 5s sleep stub to finish and spinner to disappear
                 for _ in range(30):
@@ -370,13 +363,17 @@ class TestVisualSmoke(unittest.TestCase):
                 # -------------------------------------------------------------
                 # Click Solve
                 await click_element("Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Solve')")
-                await asyncio.sleep(1.5)
+                for _ in range(25):
+                    page_txt = await evaluate("document.body.innerText")
+                    if "x = 22" in page_txt or "22" in page_txt:
+                        break
+                    await asyncio.sleep(0.5)
 
                 await check_text_leaks("Answer State")
                 await check_overflow("Answer State", 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_answered_1280.png"), 1280)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_answered_1280.png"), 1280)
                 await check_overflow("Answer State", 420)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_answered_420.png"), 420)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_answered_420.png"), 420)
 
                 page_txt = await evaluate("document.body.innerText")
                 if "x = 22" not in page_txt and "22" not in page_txt:
@@ -386,33 +383,46 @@ class TestVisualSmoke(unittest.TestCase):
                 # 8. Warning State with stub "500 - 50 = 160"
                 # -------------------------------------------------------------
                 await type_latex("500 - 50 = 160")
-                await asyncio.sleep(1.0)
                 from ui_checks import review
                 expected_warn = review("500 - 50 = 160", "Arithmetic")["warnings"][0]
-                warn_page = await evaluate("document.body.innerText")
+                for _ in range(25):
+                    warn_page = await evaluate("document.body.innerText")
+                    if expected_warn in warn_page:
+                        break
+                    await asyncio.sleep(0.5)
+
                 if expected_warn not in warn_page:
                     failures.append(f"[Warning State] Review warning '{expected_warn}' not found verbatim in page")
 
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_warning_1280.png"), 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_warning_420.png"), 420)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_warning_1280.png"), 1280)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_warning_420.png"), 420)
 
                 # -------------------------------------------------------------
                 # 9. Error State with stub "2 x + 3 y = 74"
                 # -------------------------------------------------------------
                 await type_latex("2 x + 3 y = 74")
-                await asyncio.sleep(1.0)
+                for _ in range(20):
+                    curr_val = await evaluate("(() => { const el = document.querySelector('input[aria-label*=\"Recognized LaTeX\"]'); return el ? el.value : ''; })()")
+                    if "2 x + 3 y = 74" in curr_val:
+                        break
+                    await asyncio.sleep(0.5)
                 # Click Solve
                 await click_element("Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Solve')")
-                await asyncio.sleep(1.5)
                 
-                from ui_checks import review
                 expected_err = review("2 x + 3 y = 74", "Auto")["error"]
-                err_page = await evaluate("document.body.innerText")
+                for _ in range(25):
+                    err_page = await evaluate("document.body.innerText")
+                    if expected_err in err_page:
+                        break
+                    await asyncio.sleep(0.5)
+
                 if expected_err not in err_page:
+                    print(f"DEBUG ERROR STATE: expected='{expected_err}'")
+                    print(f"DEBUG PAGE TEXT: {err_page}")
                     failures.append(f"[Error State] Review/solver error '{expected_err}' not found verbatim in page")
 
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_error_1280.png"), 1280)
-                await capture_shot(os.path.join(OUTPUT_DIR, "visual_solve_error_420.png"), 420)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_error_1280.png"), 1280)
+                await capture_shot(os.path.join(OUTPUT_DIR, "solve_error_420.png"), 420)
 
                 # Report all failures
                 if failures:
